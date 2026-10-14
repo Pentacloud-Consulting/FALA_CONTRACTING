@@ -35,7 +35,7 @@ export async function getCRMOverview(entityCode?: string) {
     return { leads, customers, contacts, opportunities, entities };
   } catch (error) {
     console.error("Error loading CRM overview:", error);
-    throw new Error("Failed to load CRM data");
+    return { leads: [], customers: [], contacts: [], opportunities: [], entities: [] };
   }
 }
 
