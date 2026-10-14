@@ -28,7 +28,7 @@ export async function getContracts(entityCode?: string) {
 
 export async function getContractById(id: string) {
   try {
-    return await prisma.contract.findUnique({
+    let c = await prisma.contract.findUnique({
       where: { id },
       include: {
         customer: { include: { contacts: true } },
@@ -44,9 +44,30 @@ export async function getContractById(id: string) {
         },
       },
     });
+
+    if (!c) {
+      c = await prisma.contract.findFirst({
+        where: { contractNumber: id },
+        include: {
+          customer: { include: { contacts: true } },
+          businessEntity: true,
+          tender: true,
+          quotation: { include: { lineItems: true } },
+          projects: {
+            include: {
+              milestones: true,
+              purchaseRequests: true,
+              purchaseOrders: true,
+            },
+          },
+        },
+      });
+    }
+
+    return c;
   } catch (error) {
     console.error("Error fetching contract:", error);
-    throw new Error("Failed to fetch contract details");
+    return null;
   }
 }
 

@@ -6,14 +6,22 @@ import { createQuotationFromEstimation } from "@/actions/quotationActions";
 import { useApp } from "@/context/AppContext";
 import { FileCheck2, Loader2 } from "lucide-react";
 
-export default function GenerateQuoteButton({ estimationId }: { estimationId: string }) {
+export default function GenerateQuoteButton({
+  estimationId,
+  tenderId,
+  fallbackData,
+}: {
+  estimationId: string;
+  tenderId?: string;
+  fallbackData?: any;
+}) {
   const router = useRouter();
   const { showToast } = useApp();
   const [loading, setLoading] = useState(false);
 
   const handleGenerate = async () => {
     setLoading(true);
-    const res = await createQuotationFromEstimation(estimationId);
+    const res = await createQuotationFromEstimation(estimationId, tenderId, fallbackData);
     setLoading(false);
 
     if (res.success && res.quotation) {

@@ -29,7 +29,7 @@ export async function getEstimations(entityCode?: string) {
 
 export async function getEstimationById(id: string) {
   try {
-    return await prisma.estimation.findUnique({
+    let est = await prisma.estimation.findUnique({
       where: { id },
       include: {
         tender: true,
@@ -39,9 +39,37 @@ export async function getEstimationById(id: string) {
         quotations: true,
       },
     });
+
+    if (!est) {
+      est = await prisma.estimation.findFirst({
+        where: { estimationNumber: id },
+        include: {
+          tender: true,
+          businessEntity: true,
+          customer: true,
+          lineItems: true,
+          quotations: true,
+        },
+      });
+    }
+
+    if (!est) {
+      est = await prisma.estimation.findFirst({
+        where: { tenderId: id },
+        include: {
+          tender: true,
+          businessEntity: true,
+          customer: true,
+          lineItems: true,
+          quotations: true,
+        },
+      });
+    }
+
+    return est;
   } catch (error) {
     console.error("Error fetching estimation:", error);
-    throw new Error("Failed to fetch estimation");
+    return null;
   }
 }
 

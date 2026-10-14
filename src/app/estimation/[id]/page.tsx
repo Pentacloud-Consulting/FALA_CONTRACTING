@@ -74,7 +74,23 @@ export default async function EstimationDetailPage({
 
           <div className="flex items-center gap-3">
             {est.quotations.length === 0 ? (
-              <GenerateQuoteButton estimationId={est.id} />
+              <GenerateQuoteButton
+                estimationId={est.id}
+                tenderId={est.tenderId}
+                fallbackData={{
+                  preparedBy: est.preparedBy,
+                  targetMargin: est.targetMargin,
+                  totalDirectCost: est.totalDirectCost,
+                  overheads: est.overheads,
+                  contingency: est.contingency,
+                  totalCost: est.totalCost,
+                  sellingPriceBeforeTax: est.sellingPriceBeforeTax,
+                  taxAmount: est.taxAmount,
+                  finalPrice: est.finalPrice,
+                  estimatedProfit: est.estimatedProfit,
+                  lineItems: est.lineItems,
+                }}
+              />
             ) : (
               <Link
                 href={`/quotations/${est.quotations[0].id}`}

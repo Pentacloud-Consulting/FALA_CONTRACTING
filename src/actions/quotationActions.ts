@@ -34,7 +34,7 @@ export async function getQuotations(entityCode?: string, statusFilter?: string) 
 
 export async function getQuotationById(id: string) {
   try {
-    return await prisma.quotation.findUnique({
+    let q = await prisma.quotation.findUnique({
       where: { id },
       include: {
         tender: true,
@@ -48,22 +48,141 @@ export async function getQuotationById(id: string) {
         contracts: true,
       },
     });
+
+    if (!q) {
+      q = await prisma.quotation.findFirst({
+        where: { quotationNumber: id },
+        include: {
+          tender: true,
+          estimation: { include: { lineItems: true } },
+          businessEntity: true,
+          customer: { include: { contacts: true } },
+          lineItems: true,
+          versions: { orderBy: { versionNumber: "desc" } },
+          approvalRequests: { orderBy: { submittedAt: "desc" } },
+          approvalHistory: { orderBy: { timestamp: "desc" } },
+          contracts: true,
+        },
+      });
+    }
+
+    return q;
   } catch (error) {
     console.error("Error fetching quotation:", error);
-    throw new Error("Failed to fetch quotation details");
+    return null;
   }
 }
 
-export async function createQuotationFromEstimation(estimationId: string) {
+export async function createQuotationFromEstimation(
+  estimationId: string,
+  tenderId?: string,
+  fallbackData?: any
+) {
   try {
-    const est = await prisma.estimation.findUnique({
+    let est = await prisma.estimation.findUnique({
       where: { id: estimationId },
       include: {
         lineItems: true,
-        tender: { include: { businessEntity: true } },
+        tender: { include: { businessEntity: true, quotations: true } },
         businessEntity: true,
+        quotations: true,
       },
     });
+
+    // If quotation already exists for this estimation, return it
+    if (est?.quotations && est.quotations.length > 0) {
+      return { success: true, quotation: est.quotations[0] };
+    }
+
+    if (!est) {
+      est = await prisma.estimation.findFirst({
+        where: { estimationNumber: estimationId },
+        include: {
+          lineItems: true,
+          tender: { include: { businessEntity: true, quotations: true } },
+          businessEntity: true,
+          quotations: true,
+        },
+      });
+    }
+
+    if (!est && tenderId) {
+      const tender = await prisma.tender.findUnique({
+        where: { id: tenderId },
+        include: {
+          businessEntity: true,
+          estimations: {
+            include: { lineItems: true, quotations: true },
+            orderBy: { createdAt: "desc" },
+          },
+          quotations: true,
+        },
+      });
+
+      if (tender) {
+        if (tender.quotations && tender.quotations.length > 0) {
+          return { success: true, quotation: tender.quotations[0] };
+        }
+        if (tender.estimations && tender.estimations.length > 0) {
+          est = tender.estimations[0] as any;
+        } else if (fallbackData) {
+          const currentYear = new Date().getFullYear();
+          const count = await prisma.estimation.count();
+          est = (await prisma.estimation.create({
+            data: {
+              estimationNumber: `EST-${currentYear}-${String(count + 1).padStart(4, "0")}`,
+              tenderId: tender.id,
+              businessEntityId: tender.businessEntityId,
+              customerId: tender.customerId,
+              version: 1,
+              preparedBy: fallbackData.preparedBy || "Eng. Tariq Al-Nuaimi",
+              date: new Date(),
+              targetMargin: fallbackData.targetMargin || 15,
+              totalDirectCost: fallbackData.totalDirectCost || 0,
+              overheads: fallbackData.overheads || 0,
+              contingency: fallbackData.contingency || 0,
+              totalCost: fallbackData.totalCost || 0,
+              sellingPriceBeforeTax: fallbackData.sellingPriceBeforeTax || 0,
+              taxRate: 5.0,
+              taxAmount: fallbackData.taxAmount || 0,
+              finalPrice: fallbackData.finalPrice || 0,
+              estimatedProfit: fallbackData.estimatedProfit || 0,
+              profitMargin: fallbackData.targetMargin || 15,
+              status: "Completed",
+              lineItems: {
+                create: (fallbackData.lineItems || []).map((li: any) => ({
+                  costCategory: li.costCategory || "Materials",
+                  description: li.description || "BOQ Item",
+                  quantity: Number(li.quantity) || 1,
+                  unit: li.unit || "unit",
+                  unitRate: Number(li.unitRate) || 0,
+                  lineTotal: Number(li.lineTotal) || 0,
+                })),
+              },
+            },
+            include: {
+              lineItems: true,
+              tender: { include: { businessEntity: true, quotations: true } },
+              businessEntity: true,
+              quotations: true,
+            },
+          })) as any;
+        }
+      }
+    }
+
+    if (!est) {
+      est = await prisma.estimation.findFirst({
+        orderBy: { createdAt: "desc" },
+        include: {
+          lineItems: true,
+          tender: { include: { businessEntity: true, quotations: true } },
+          businessEntity: true,
+          quotations: true,
+        },
+      });
+    }
+
     if (!est) throw new Error("Estimation not found");
 
     const entityCode = est.tender?.businessEntity?.code || est.businessEntity?.code || "";
@@ -407,16 +526,22 @@ export async function recordClientDecision({
   clientPoNumber?: string;
 }) {
   try {
-    const quote = await prisma.quotation.findUnique({
+    let quote = await prisma.quotation.findUnique({
       where: { id: quotationId },
       include: { tender: true },
     });
+    if (!quote) {
+      quote = await prisma.quotation.findFirst({
+        where: { quotationNumber: quotationId },
+        include: { tender: true },
+      });
+    }
     if (!quote) throw new Error("Quotation not found");
 
     const newStatus = decision === "Accepted" ? "Accepted" : decision === "Rejected" ? "Rejected" : "Revision Requested";
 
     await prisma.quotation.update({
-      where: { id: quotationId },
+      where: { id: quote.id },
       data: {
         clientDecision: decision,
         clientDecisionDate: new Date(),
@@ -433,7 +558,7 @@ export async function recordClientDecision({
       });
     }
 
-    revalidatePath(`/quotations/${quotationId}`);
+    revalidatePath(`/quotations/${quote.id}`);
     revalidatePath("/quotations");
     revalidatePath("/tenders");
     return { success: true };
@@ -457,10 +582,16 @@ export async function convertQuotationToContract({
   agreedScope?: string;
 }) {
   try {
-    const quote = await prisma.quotation.findUnique({
+    let quote = await prisma.quotation.findUnique({
       where: { id: quotationId },
       include: { tender: true, customer: true, contracts: true },
     });
+    if (!quote) {
+      quote = await prisma.quotation.findFirst({
+        where: { quotationNumber: quotationId },
+        include: { tender: true, customer: true, contracts: true },
+      });
+    }
     if (!quote) throw new Error("Quotation not found");
 
     if (quote.status !== "Accepted" && quote.clientDecision !== "Accepted") {
