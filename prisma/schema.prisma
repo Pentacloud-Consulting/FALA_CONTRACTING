@@ -1,0 +1,502 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 1. Business Entities (7 Conglomerate Divisions)
+model BusinessEntity {
+  id               String            @id @default(cuid())
+  name             String            @unique
+  code             String            @unique // ROAD_INFRA, EXP_MFG, BLD_MAT, MED, REAL_EST, FLEET_WS, RDY_MIX
+  shortName        String
+  description      String
+  color            String            @default("#1e3a8a")
+  icon             String            @default("Building")
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  tenders          Tender[]
+  leads            Lead[]
+  opportunities    Opportunity[]
+  estimations      Estimation[]
+  quotations       Quotation[]
+  contracts        Contract[]
+  projects         Project[]
+  purchaseRequests PurchaseRequest[]
+  purchaseOrders   PurchaseOrder[]
+}
+
+// 2. Users & Roles (Demo Role Switcher support)
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      String   @default("PREPARER") // PREPARER, ESTIMATOR, GM, PROJECT_MANAGER, PROCUREMENT_OFFICER
+  title     String?
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// 3. CRM: Customers & Contacts
+model Customer {
+  id             String        @id @default(cuid())
+  code           String        @unique // e.g. CUST-001
+  name           String
+  type           String        @default("Corporate") // Corporate, Government, Semi-Gov, Private
+  email          String
+  phone          String
+  address        String
+  city           String        @default("Dubai")
+  country        String        @default("United Arab Emirates")
+  primaryContact String
+  status         String        @default("Active") // Active, Inactive, Blacklisted
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  contacts       Contact[]
+  opportunities  Opportunity[]
+  tenders        Tender[]
+  estimations    Estimation[]
+  quotations     Quotation[]
+  contracts      Contract[]
+  projects       Project[]
+}
+
+model Contact {
+  id          String   @id @default(cuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  name        String
+  designation String
+  email       String
+  phone       String
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Lead {
+  id               String          @id @default(cuid())
+  name             String
+  company          String
+  email            String
+  phone            String
+  source           String          @default("Direct") // Direct, Referral, Website, Tender Portal, Expo
+  businessEntityId String
+  businessEntity   BusinessEntity  @relation(fields: [businessEntityId], references: [id])
+  status           String          @default("New") // New, Contacted, Qualified, Converted, Dropped
+  ownerName        String          @default("Sales Team")
+  notes            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+}
+
+model Opportunity {
+  id               String         @id @default(cuid())
+  oppNumber        String         @unique // OPP-2026-001
+  name             String
+  customerId       String
+  customer         Customer       @relation(fields: [customerId], references: [id])
+  businessEntityId String
+  businessEntity   BusinessEntity @relation(fields: [businessEntityId], references: [id])
+  expectedValue    Float          @default(0)
+  expectedCloseDate DateTime
+  ownerName        String         @default("Tender Dept")
+  status           String         @default("Proposal") // Identification, Qualification, Proposal, Negotiation, Closed Won, Closed Lost
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+// 4. Tender Management
+model Tender {
+  id                 String         @id @default(cuid())
+  tenderNumber       String         @unique // TND-2026-0001
+  title              String
+  businessEntityId   String
+  businessEntity     BusinessEntity @relation(fields: [businessEntityId], references: [id])
+  customerId         String
+  customer           Customer       @relation(fields: [customerId], references: [id])
+  branch             String?        @default("Dubai HQ")
+  recordType         String         @default("Tender") // Tender, Direct Opportunity, Service Request
+  contactPerson      String
+  contactEmail       String
+  contactPhone       String
+  clientReference    String?
+  issueDate          DateTime       @default(now())
+  submissionDeadline DateTime
+  expectedClosingDate DateTime?
+  ownerName          String         @default("Senior Estimator")
+  location           String
+  currency           String         @default("AED")
+  description        String
+  scopeOfWork        String
+  supportingDocs     String?
+  internalNotes      String?
+  status             String         @default("Draft") 
+  // Draft, Registered, Under Estimation, Estimation Completed, Quotation in Preparation, 
+  // Pending GM Approval, Approved, Submitted to Client, Revision Requested, Awarded, Lost, Cancelled
+  estimatedValue     Float          @default(0)
+  specificFieldsJson String?        // Structured JSON for dynamic entity-specific fields
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  estimations        Estimation[]
+  quotations         Quotation[]
+  contracts          Contract[]
+
+  @@index([businessEntityId])
+  @@index([status])
+  @@index([customerId])
+}
+
+// 5. Estimation
+model Estimation {
+  id                  String               @id @default(cuid())
+  estimationNumber    String               @unique // EST-2026-0001
+  tenderId            String
+  tender              Tender               @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  businessEntityId    String
+  businessEntity      BusinessEntity       @relation(fields: [businessEntityId], references: [id])
+  customerId          String
+  customer            Customer             @relation(fields: [customerId], references: [id])
+  version             Int                  @default(1)
+  preparedBy          String
+  date                DateTime             @default(now())
+  targetMargin        Float                @default(15.0) // 15%
+  totalDirectCost     Float                @default(0)
+  overheads           Float                @default(0)
+  contingency         Float                @default(0)
+  totalCost           Float                @default(0)
+  sellingPriceBeforeTax Float              @default(0)
+  taxRate             Float                @default(5.0) // UAE VAT 5%
+  taxAmount           Float                @default(0)
+  finalPrice          Float                @default(0)
+  estimatedProfit     Float                @default(0)
+  profitMargin        Float                @default(0)
+  status              String               @default("Draft") // Draft, Completed, Linked
+  notes               String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  lineItems           EstimationLineItem[]
+  quotations          Quotation[]
+
+  @@index([tenderId])
+}
+
+model EstimationLineItem {
+  id           String     @id @default(cuid())
+  estimationId String
+  estimation   Estimation @relation(fields: [estimationId], references: [id], onDelete: Cascade)
+  costCategory String // Materials, Labour, Equipment, Transportation, Subcontracting, Other Direct, Overheads, Contingency
+  description  String
+  quantity     Float
+  unit         String
+  unitRate     Float
+  lineTotal    Float
+}
+
+// 6. Quotation & Mandatory GM Approval
+model Quotation {
+  id                 String             @id @default(cuid())
+  quotationNumber    String             @unique // QT-2026-0001
+  tenderId           String
+  tender             Tender             @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  estimationId       String?
+  estimation         Estimation?        @relation(fields: [estimationId], references: [id])
+  businessEntityId   String
+  businessEntity     BusinessEntity     @relation(fields: [businessEntityId], references: [id])
+  customerId         String
+  customer           Customer           @relation(fields: [customerId], references: [id])
+  version            Int                @default(1)
+  subtotal           Float              @default(0)
+  discount           Float              @default(0)
+  tax                Float              @default(0)
+  totalAmount        Float              @default(0)
+  paymentTerms       String             @default("30 Days from Invoice Date")
+  deliveryTerms      String             @default("Site Delivery, Dubai")
+  validityDays       Int                @default(30)
+  assumptions        String?
+  exclusions         String?
+  status             String             @default("Draft") 
+  // Draft, Pending GM Approval, Approved, Rejected, Changes Requested, Submitted to Client, Accepted, Awarded, Expired
+  clientDecision     String             @default("Pending") // Pending, Accepted, Revision Requested, Rejected, Expired
+  clientDecisionDate DateTime?
+  clientComments     String?
+  clientPoNumber     String?
+  submittedToClientAt DateTime?
+  submissionMethod   String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  lineItems          QuotationLineItem[]
+  versions           QuotationVersion[]
+  approvalRequests   ApprovalRequest[]
+  approvalHistory    ApprovalHistory[]
+  contracts          Contract[]
+
+  @@index([tenderId])
+  @@index([status])
+}
+
+model QuotationLineItem {
+  id          String    @id @default(cuid())
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Float
+  unit        String
+  unitRate    Float
+  lineTotal   Float
+}
+
+model QuotationVersion {
+  id            String    @id @default(cuid())
+  quotationId   String
+  quotation     Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  versionNumber Int
+  snapshotJson  String
+  createdAt     DateTime  @default(now())
+}
+
+model ApprovalRequest {
+  id             String    @id @default(cuid())
+  quotationId    String
+  quotation      Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  requesterName  String
+  approverName   String?
+  status         String    @default("PENDING") // PENDING, APPROVED, REJECTED, CHANGES_REQUESTED
+  submittedAt    DateTime  @default(now())
+  decidedAt      DateTime?
+  decisionReason String?
+  comments       String?
+}
+
+model ApprovalHistory {
+  id             String    @id @default(cuid())
+  quotationId    String
+  quotation      Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  action         String    // SUBMITTED, APPROVED, REJECTED, CHANGES_REQUESTED, RESUBMITTED
+  actorName      String
+  actorRole      String
+  comment        String?
+  previousStatus String
+  newStatus      String
+  timestamp      DateTime  @default(now())
+}
+
+// 7. Client Acceptance & Contracts
+model Contract {
+  id               String         @id @default(cuid())
+  contractNumber   String         @unique // CON-2026-0001
+  tenderId         String
+  tender           Tender         @relation(fields: [tenderId], references: [id])
+  quotationId      String
+  quotation        Quotation      @relation(fields: [quotationId], references: [id])
+  customerId       String
+  customer         Customer       @relation(fields: [customerId], references: [id])
+  businessEntityId String
+  businessEntity   BusinessEntity @relation(fields: [businessEntityId], references: [id])
+  contractValue    Float
+  agreedScope      String
+  startDate        DateTime
+  completionDate   DateTime
+  paymentTerms     String
+  clientPoNumber   String?
+  clientPoDocRef   String?
+  status           String         @default("Active") // Active, Completed, Terminated, On Hold
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  projects         Project[]
+
+  @@index([tenderId])
+  @@index([customerId])
+}
+
+// 8. Projects & Milestones
+model Project {
+  id               String             @id @default(cuid())
+  projectNumber    String             @unique // PRJ-2026-0001
+  name             String
+  contractId       String
+  contract         Contract           @relation(fields: [contractId], references: [id])
+  customerId       String
+  customer         Customer           @relation(fields: [customerId], references: [id])
+  businessEntityId String
+  businessEntity   BusinessEntity     @relation(fields: [businessEntityId], references: [id])
+  projectManager   String
+  location         String
+  contractValue    Float
+  approvedBudget   Float
+  plannedStartDate DateTime
+  plannedEndDate   DateTime
+  actualStartDate  DateTime?
+  actualEndDate    DateTime?
+  status           String             @default("Active") // Planned, Active, On Hold, Completed, Cancelled
+  progress         Int                @default(0) // 0-100%
+  scope            String
+  notes            String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  milestones       ProjectMilestone[]
+  purchaseRequests PurchaseRequest[]
+  purchaseOrders   PurchaseOrder[]
+
+  @@index([contractId])
+  @@index([businessEntityId])
+}
+
+model ProjectMilestone {
+  id                 String    @id @default(cuid())
+  projectId          String
+  project            Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name               String
+  description        String?
+  owner              String
+  plannedStart       DateTime
+  plannedFinish      DateTime
+  actualFinish       DateTime?
+  status             String    @default("Pending") // Pending, In Progress, Completed, Delayed
+  progressPercentage Int       @default(0)
+}
+
+// 9. Procurement
+model Supplier {
+  id            String          @id @default(cuid())
+  code          String          @unique // SUP-001
+  name          String
+  contactPerson String
+  email         String
+  phone         String
+  address       String
+  category      String          @default("Aggregates & Asphalt") // Materials, Equipment Rental, Subcontractor, Safety, Fuel
+  status        String          @default("Active") // Active, Inactive, Pending Review
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  purchaseOrders PurchaseOrder[]
+}
+
+model PurchaseRequest {
+  id                 String                    @id @default(cuid())
+  prNumber           String                    @unique // PR-2026-0001
+  businessEntityId   String
+  businessEntity     BusinessEntity            @relation(fields: [businessEntityId], references: [id])
+  projectId          String?
+  project            Project?                  @relation(fields: [projectId], references: [id])
+  department         String                    @default("Operations")
+  requester          String
+  requiredDate       DateTime
+  description        String
+  supplierPreference String?
+  reason             String
+  status             String                    @default("Pending") // Pending, Approved, Converted, Rejected
+  totalAmount        Float                     @default(0)
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+
+  lineItems          PurchaseRequestLineItem[]
+  purchaseOrders     PurchaseOrder[]
+
+  @@index([projectId])
+}
+
+model PurchaseRequestLineItem {
+  id                String          @id @default(cuid())
+  purchaseRequestId String
+  purchaseRequest   PurchaseRequest @relation(fields: [purchaseRequestId], references: [id], onDelete: Cascade)
+  description       String
+  quantity          Float
+  unit              String
+  estimatedPrice    Float
+  lineTotal         Float
+}
+
+model PurchaseOrder {
+  id                   String                  @id @default(cuid())
+  poNumber             String                  @unique // PO-2026-0001
+  supplierId           String
+  supplier             Supplier                @relation(fields: [supplierId], references: [id])
+  businessEntityId     String
+  businessEntity       BusinessEntity          @relation(fields: [businessEntityId], references: [id])
+  projectId            String?
+  project              Project?                @relation(fields: [projectId], references: [id])
+  purchaseRequestId    String?
+  purchaseRequest      PurchaseRequest?        @relation(fields: [purchaseRequestId], references: [id])
+  subtotal             Float                   @default(0)
+  tax                  Float                   @default(0)
+  totalAmount          Float                   @default(0)
+  deliveryTerms        String                  @default("Delivered to Site, Jebel Ali")
+  paymentTerms         String                  @default("45 Days Credit")
+  expectedDeliveryDate DateTime
+  status               String                  @default("Issued") // Draft, Issued, Partially Received, Received, Cancelled
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  lineItems            PurchaseOrderLineItem[]
+  goodsReceipts        GoodsReceipt[]
+
+  @@index([supplierId])
+  @@index([purchaseRequestId])
+}
+
+model PurchaseOrderLineItem {
+  id                  String                 @id @default(cuid())
+  purchaseOrderId     String
+  purchaseOrder       PurchaseOrder          @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  description         String
+  quantity            Float
+  unit                String
+  unitRate            Float
+  lineTotal           Float
+
+  goodsReceiptLines   GoodsReceiptLineItem[]
+}
+
+model GoodsReceipt {
+  id              String                 @id @default(cuid())
+  receiptNumber   String                 @unique // GRN-2026-0001
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder          @relation(fields: [purchaseOrderId], references: [id])
+  receivedDate    DateTime               @default(now())
+  receivedBy      String
+  notes           String?
+  status          String                 @default("Accepted") // Accepted, Partially Accepted, Rejected
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  lineItems       GoodsReceiptLineItem[]
+
+  @@index([purchaseOrderId])
+}
+
+model GoodsReceiptLineItem {
+  id               String                @id @default(cuid())
+  goodsReceiptId   String
+  goodsReceipt     GoodsReceipt          @relation(fields: [goodsReceiptId], references: [id], onDelete: Cascade)
+  poLineItemId     String
+  poLineItem       PurchaseOrderLineItem @relation(fields: [poLineItemId], references: [id])
+  description      String
+  orderedQuantity  Float
+  receivedQuantity Float
+  acceptedQuantity Float
+}
+
+// 10. Audit Log
+model AuditLog {
+  id          String   @id @default(cuid())
+  entityType  String
+  entityId    String
+  action      String
+  performedBy String
+  details     String?
+  timestamp   DateTime @default(now())
+}

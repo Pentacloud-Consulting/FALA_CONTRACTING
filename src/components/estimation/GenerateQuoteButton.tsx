@@ -1,0 +1,46 @@
+"use client";
+
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createQuotationFromEstimation } from "@/actions/quotationActions";
+import { useApp } from "@/context/AppContext";
+import { FileCheck2, Loader2 } from "lucide-react";
+
+export default function GenerateQuoteButton({ estimationId }: { estimationId: string }) {
+  const router = useRouter();
+  const { showToast } = useApp();
+  const [loading, setLoading] = useState(false);
+
+  const handleGenerate = async () => {
+    setLoading(true);
+    const res = await createQuotationFromEstimation(estimationId);
+    setLoading(false);
+
+    if (res.success && res.quotation) {
+      showToast(`Quotation ${res.quotation.quotationNumber} generated successfully!`, "success");
+      router.push(`/quotations/${res.quotation.id}`);
+    } else {
+      showToast(res.error || "Failed to generate quotation", "error");
+    }
+  };
+
+  return (
+    <button
+      onClick={handleGenerate}
+      disabled={loading}
+      className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition shadow-md shadow-blue-600/20"
+    >
+      {loading ? (
+        <>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Generating Offer...</span>
+        </>
+      ) : (
+        <>
+          <FileCheck2 className="h-4 w-4" />
+          <span>Generate Commercial Quotation →</span>
+        </>
+      )}
+    </button>
+  );
+}
