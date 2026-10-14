@@ -2,9 +2,11 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { ensureLatestDb, pushDbToMongo } from "@/lib/mongoSync";
 
 export async function getTenders(entityCode?: string, status?: string) {
   try {
+    await ensureLatestDb();
     const where: any = {};
     if (entityCode && entityCode !== "ALL") {
       where.businessEntity = { code: entityCode };
@@ -32,6 +34,7 @@ export async function getTenders(entityCode?: string, status?: string) {
 
 export async function getTenderById(id: string) {
   try {
+    await ensureLatestDb();
     return await prisma.tender.findUnique({
       where: { id },
       include: {
@@ -62,6 +65,7 @@ export async function getTenderById(id: string) {
 }
 
 export async function getTenderFormData() {
+  await ensureLatestDb();
   const [entities, customers] = await Promise.all([
     prisma.businessEntity.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
     prisma.customer.findMany({ where: { status: "Active" }, include: { contacts: true }, orderBy: { name: "asc" } }),
@@ -95,6 +99,7 @@ export interface CreateTenderInput {
 
 export async function createTender(input: CreateTenderInput) {
   try {
+    await ensureLatestDb();
     const businessEntity = await prisma.businessEntity.findUnique({
       where: { code: input.businessEntityCode },
     });
@@ -161,6 +166,7 @@ export async function createTender(input: CreateTenderInput) {
 
     revalidatePath("/tenders");
     revalidatePath("/");
+    await pushDbToMongo();
     return { success: true, tender: newTender };
   } catch (error: any) {
     console.error("Error creating tender:", error);
@@ -170,6 +176,7 @@ export async function createTender(input: CreateTenderInput) {
 
 export async function updateTenderStatus(id: string, status: string) {
   try {
+    await ensureLatestDb();
     const updated = await prisma.tender.update({
       where: { id },
       data: { status },
@@ -177,6 +184,7 @@ export async function updateTenderStatus(id: string, status: string) {
     revalidatePath(`/tenders/${id}`);
     revalidatePath("/tenders");
     revalidatePath("/");
+    await pushDbToMongo();
     return { success: true, tender: updated };
   } catch (error: any) {
     return { success: false, error: error.message };

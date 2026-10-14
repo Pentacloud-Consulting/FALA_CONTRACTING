@@ -2,9 +2,11 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { ensureLatestDb, pushDbToMongo } from "@/lib/mongoSync";
 
 export async function getContracts(entityCode?: string) {
   try {
+    await ensureLatestDb();
     const where: any = {};
     if (entityCode && entityCode !== "ALL") {
       where.businessEntity = { code: entityCode };
@@ -28,6 +30,7 @@ export async function getContracts(entityCode?: string) {
 
 export async function getContractById(id: string) {
   try {
+    await ensureLatestDb();
     let c = await prisma.contract.findUnique({
       where: { id },
       include: {
@@ -85,6 +88,7 @@ export async function createProjectFromContract({
   approvedBudget: number;
 }) {
   try {
+    await ensureLatestDb();
     const contract = await prisma.contract.findUnique({
       where: { id: contractId },
       include: { projects: true },
@@ -152,6 +156,7 @@ export async function createProjectFromContract({
     revalidatePath(`/contracts/${contractId}`);
     revalidatePath("/projects");
     revalidatePath("/");
+    await pushDbToMongo();
     return { success: true, project };
   } catch (error: any) {
     return { success: false, error: error.message };

@@ -3,9 +3,11 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { round2 } from "@/lib/calculations";
+import { ensureLatestDb, pushDbToMongo } from "@/lib/mongoSync";
 
 export async function getQuotations(entityCode?: string, statusFilter?: string) {
   try {
+    await ensureLatestDb();
     const where: any = {};
     if (entityCode && entityCode !== "ALL") {
       where.businessEntity = { code: entityCode };
@@ -34,6 +36,7 @@ export async function getQuotations(entityCode?: string, statusFilter?: string) 
 
 export async function getQuotationById(id: string) {
   try {
+    await ensureLatestDb();
     let q = await prisma.quotation.findUnique({
       where: { id },
       include: {
@@ -79,6 +82,7 @@ export async function createQuotationFromEstimation(
   fallbackData?: any
 ) {
   try {
+    await ensureLatestDb();
     let est = await prisma.estimation.findUnique({
       where: { id: estimationId },
       include: {
@@ -314,6 +318,7 @@ export async function createQuotationFromEstimation(
 
     revalidatePath(`/quotations/${quotation.id}`);
     revalidatePath("/quotations");
+    await pushDbToMongo();
     return { success: true, quotation };
   } catch (error: any) {
     console.error("Error creating quotation from estimation:", error);
@@ -323,6 +328,7 @@ export async function createQuotationFromEstimation(
 
 export async function submitQuotationForGMApproval(quotationId: string, requesterName: string) {
   try {
+    await ensureLatestDb();
     const quote = await prisma.quotation.findUnique({
       where: { id: quotationId },
       include: { tender: true },
@@ -366,6 +372,7 @@ export async function submitQuotationForGMApproval(quotationId: string, requeste
     revalidatePath("/approvals");
     revalidatePath("/tenders");
     revalidatePath("/");
+    await pushDbToMongo();
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -390,6 +397,7 @@ export async function gmDecideQuotation({
   reason?: string;
 }) {
   try {
+    await ensureLatestDb();
     // 1. Strict Server Role Verification
     if (actorRole !== "GM") {
       throw new Error("Access Denied: Only users with the General Manager (GM) role can approve or reject quotations.");
@@ -461,6 +469,7 @@ export async function gmDecideQuotation({
     revalidatePath("/approvals");
     revalidatePath("/tenders");
     revalidatePath("/");
+    await pushDbToMongo();
     return { success: true, newStatus: newQuoteStatus };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -469,6 +478,7 @@ export async function gmDecideQuotation({
 
 export async function submitQuotationToClient(quotationId: string, submissionMethod: string) {
   try {
+    await ensureLatestDb();
     const quote = await prisma.quotation.findUnique({
       where: { id: quotationId },
       include: { tender: true },
@@ -508,6 +518,7 @@ export async function submitQuotationToClient(quotationId: string, submissionMet
 
     revalidatePath(`/quotations/${quotationId}`);
     revalidatePath("/tenders");
+    await pushDbToMongo();
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -526,6 +537,7 @@ export async function recordClientDecision({
   clientPoNumber?: string;
 }) {
   try {
+    await ensureLatestDb();
     let quote = await prisma.quotation.findUnique({
       where: { id: quotationId },
       include: { tender: true },
@@ -561,6 +573,7 @@ export async function recordClientDecision({
     revalidatePath(`/quotations/${quote.id}`);
     revalidatePath("/quotations");
     revalidatePath("/tenders");
+    await pushDbToMongo();
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -582,6 +595,7 @@ export async function convertQuotationToContract({
   agreedScope?: string;
 }) {
   try {
+    await ensureLatestDb();
     let quote = await prisma.quotation.findUnique({
       where: { id: quotationId },
       include: { tender: true, customer: true, contracts: true },
@@ -638,6 +652,7 @@ export async function convertQuotationToContract({
     revalidatePath("/contracts");
     revalidatePath("/tenders");
     revalidatePath("/");
+    await pushDbToMongo();
     return { success: true, contract };
   } catch (error: any) {
     return { success: false, error: error.message };

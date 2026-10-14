@@ -1,9 +1,11 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { ensureLatestDb } from "@/lib/mongoSync";
 
 export async function getDashboardData(entityFilter?: string) {
   try {
+    await ensureLatestDb();
     const whereEntity =
       entityFilter && entityFilter !== "ALL"
         ? { businessEntity: { code: entityFilter } }

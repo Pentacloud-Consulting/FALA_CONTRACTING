@@ -3,9 +3,11 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { round2 } from "@/lib/calculations";
+import { ensureLatestDb, pushDbToMongo } from "@/lib/mongoSync";
 
 export async function getProcurementOverview(entityCode?: string) {
   try {
+    await ensureLatestDb();
     const where: any = {};
     if (entityCode && entityCode !== "ALL") {
       where.businessEntity = { code: entityCode };
@@ -74,6 +76,7 @@ export async function createPurchaseRequest({
   }[];
 }) {
   try {
+    await ensureLatestDb();
     const totalAmount = round2(
       lineItems.reduce((acc, item) => acc + Number(item.quantity) * Number(item.estimatedPrice), 0)
     );
@@ -109,6 +112,7 @@ export async function createPurchaseRequest({
 
     revalidatePath("/procurement");
     revalidatePath("/procurement/requests");
+    await pushDbToMongo();
     return { success: true, pr };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -129,6 +133,7 @@ export async function convertPRtoPO({
   expectedDeliveryDate: string;
 }) {
   try {
+    await ensureLatestDb();
     const pr = await prisma.purchaseRequest.findUnique({
       where: { id: purchaseRequestId },
       include: { lineItems: true },
@@ -181,6 +186,7 @@ export async function convertPRtoPO({
 
     revalidatePath("/procurement");
     revalidatePath("/procurement/orders");
+    await pushDbToMongo();
     return { success: true, po };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -205,6 +211,7 @@ export async function createGoodsReceipt({
   }[];
 }) {
   try {
+    await ensureLatestDb();
     const currentYear = new Date().getFullYear();
     const count = await prisma.goodsReceipt.count();
     const receiptNumber = `GRN-${currentYear}-${String(count + 1).padStart(4, "0")}`;
@@ -237,6 +244,7 @@ export async function createGoodsReceipt({
 
     revalidatePath("/procurement");
     revalidatePath("/procurement/receipts");
+    await pushDbToMongo();
     return { success: true, grn };
   } catch (error: any) {
     return { success: false, error: error.message };

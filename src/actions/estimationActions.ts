@@ -3,9 +3,11 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { calculateEstimation, round2 } from "@/lib/calculations";
+import { ensureLatestDb, pushDbToMongo } from "@/lib/mongoSync";
 
 export async function getEstimations(entityCode?: string) {
   try {
+    await ensureLatestDb();
     const where: any = {};
     if (entityCode && entityCode !== "ALL") {
       where.businessEntity = { code: entityCode };
@@ -29,6 +31,7 @@ export async function getEstimations(entityCode?: string) {
 
 export async function getEstimationById(id: string) {
   try {
+    await ensureLatestDb();
     let est = await prisma.estimation.findUnique({
       where: { id },
       include: {
@@ -91,6 +94,7 @@ export interface CreateEstimationInput {
 
 export async function createEstimation(input: CreateEstimationInput) {
   try {
+    await ensureLatestDb();
     const tender = await prisma.tender.findUnique({
       where: { id: input.tenderId },
       include: { businessEntity: true, customer: true },
@@ -159,6 +163,7 @@ export async function createEstimation(input: CreateEstimationInput) {
     revalidatePath("/estimation");
     revalidatePath(`/tenders/${tender.id}`);
     revalidatePath("/tenders");
+    await pushDbToMongo();
     return { success: true, estimation: newEstimation };
   } catch (error: any) {
     console.error("Error creating estimation:", error);
