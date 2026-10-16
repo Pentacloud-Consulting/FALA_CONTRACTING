@@ -3,9 +3,11 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { round2 } from "@/lib/calculations";
+import { ensureLatestDb, pushDbToMongo } from "@/lib/mongoSync";
 
 export async function getQuotations(entityCode?: string, statusFilter?: string) {
   try {
+    await ensureLatestDb();
     const where: any = {};
     if (entityCode && entityCode !== "ALL") {
       where.businessEntity = { code: entityCode };
@@ -35,6 +37,7 @@ export async function getQuotations(entityCode?: string, statusFilter?: string) 
 
 export async function getQuotationById(id: string) {
   try {
+    await ensureLatestDb();
     let q = await prisma.quotation.findUnique({
       where: { id },
       include: {
@@ -728,6 +731,7 @@ export async function recordClientDecision({
       revalidatePath(`/opportunities/${oppId}`);
       revalidatePath("/opportunities");
     }
+    await pushDbToMongo();
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -833,6 +837,7 @@ export async function convertQuotationToContract({
       revalidatePath("/opportunities");
     }
     revalidatePath("/");
+    await pushDbToMongo();
     return { success: true, contract };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -906,6 +911,7 @@ export async function createQuotationRevisionWithDiscount({
   requesterName?: string;
 }) {
   try {
+    await ensureLatestDb();
     let base = await prisma.quotation.findUnique({
       where: { id: baseQuotationId },
       include: {
@@ -1031,6 +1037,7 @@ export async function createQuotationRevisionWithDiscount({
     revalidatePath("/quotations");
     revalidatePath(`/tenders/${base.tenderId}`);
 
+    await pushDbToMongo();
     return { success: true, quotation: newQuote };
   } catch (error: any) {
     console.error("Error creating quotation revision:", error);

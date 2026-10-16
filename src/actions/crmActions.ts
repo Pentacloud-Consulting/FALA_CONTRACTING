@@ -2,9 +2,11 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { ensureLatestDb, pushDbToMongo } from "@/lib/mongoSync";
 
 export async function getCRMOverview(entityCode?: string) {
   try {
+    await ensureLatestDb();
     const whereEntity =
       entityCode && entityCode !== "ALL"
         ? { businessEntity: { code: entityCode } }
@@ -63,6 +65,7 @@ export async function createAccount({
   industry?: string;
 }) {
   try {
+    await ensureLatestDb();
     const count = await prisma.account.count();
     const finalCode = code || `ACC-${String(count + 1).padStart(4, "0")}`;
 
@@ -85,6 +88,7 @@ export async function createAccount({
 
     revalidatePath("/crm");
     revalidatePath("/accounts");
+    await pushDbToMongo();
     return { success: true, account };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -107,6 +111,7 @@ export async function createContact({
   notes?: string;
 }) {
   try {
+    await ensureLatestDb();
     const contact = await prisma.contact.create({
       data: {
         customerId: accountId,
@@ -121,6 +126,7 @@ export async function createContact({
     revalidatePath("/crm");
     revalidatePath("/contacts");
     revalidatePath(`/accounts/${accountId}`);
+    await pushDbToMongo();
     return { success: true, contact };
   } catch (error: any) {
     return { success: false, error: error.message };
