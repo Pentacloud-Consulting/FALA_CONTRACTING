@@ -121,9 +121,6 @@ export default function Sidebar() {
       <div className="p-4 border-t border-slate-800 text-[11px] text-slate-400 bg-slate-950/40">
         <div className="flex items-center justify-between mb-1">
           <span className="font-semibold text-slate-300">Fala Enterprise MVP</span>
-          <span className="text-[10px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20 font-mono">
-            SQLite v6.19
-          </span>
         </div>
         <p className="text-[10px] text-slate-400 leading-tight">
           Unified Operations Platform

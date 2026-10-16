@@ -580,7 +580,7 @@ export default function NewTenderForm({
             <div className="border-b border-slate-100 pb-2.5">
               <h2 className="text-base font-bold text-slate-900">Review & Confirm Tender Details</h2>
               <p className="text-xs text-slate-500">
-                Please verify the tender parameters before saving to SQLite.
+                Please verify the tender parameters before saving.
               </p>
             </div>
 
@@ -649,7 +649,7 @@ export default function NewTenderForm({
               className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-2.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition shadow-md shadow-blue-600/20"
             >
               {submitting ? (
-                <span>Persisting to SQLite...</span>
+                <span>Saving Tender...</span>
               ) : (
                 <>
                   <CheckCircle2 className="h-4 w-4" />

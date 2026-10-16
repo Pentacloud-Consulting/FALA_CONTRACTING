@@ -957,7 +957,7 @@ export default function NewEstimationForm({
           className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-2.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition shadow-md shadow-blue-600/20"
         >
           {submitting ? (
-            <span>Saving to SQLite...</span>
+            <span>Saving Estimation...</span>
           ) : (
             <>
               <CheckCircle2 className="h-4 w-4" />
