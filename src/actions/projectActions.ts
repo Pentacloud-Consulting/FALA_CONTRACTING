@@ -2,11 +2,9 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { ensureLatestDb, pushDbToMongo } from "@/lib/mongoSync";
 
 export async function getProjects(entityCode?: string) {
   try {
-    await ensureLatestDb();
     const where: any = {};
     if (entityCode && entityCode !== "ALL") {
       where.businessEntity = { code: entityCode };
@@ -31,7 +29,6 @@ export async function getProjects(entityCode?: string) {
 
 export async function getProjectById(id: string) {
   try {
-    await ensureLatestDb();
     return await prisma.project.findUnique({
       where: { id },
       include: {
@@ -68,7 +65,6 @@ export async function updateMilestoneProgress(
   status: string
 ) {
   try {
-    await ensureLatestDb();
     const updated = await prisma.projectMilestone.update({
       where: { id: milestoneId },
       data: {
@@ -96,7 +92,6 @@ export async function updateMilestoneProgress(
     revalidatePath(`/projects/${updated.projectId}`);
     revalidatePath("/projects");
     revalidatePath("/");
-    await pushDbToMongo();
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -119,7 +114,6 @@ export async function addProjectMilestone({
   plannedFinish: string;
 }) {
   try {
-    await ensureLatestDb();
     const milestone = await prisma.projectMilestone.create({
       data: {
         projectId,
@@ -134,7 +128,6 @@ export async function addProjectMilestone({
     });
 
     revalidatePath(`/projects/${projectId}`);
-    await pushDbToMongo();
     return { success: true, milestone };
   } catch (error: any) {
     return { success: false, error: error.message };

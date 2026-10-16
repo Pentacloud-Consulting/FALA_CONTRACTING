@@ -38,3 +38,16 @@ export const DEMO_USERS: DemoUser[] = [
     title: "Chief Procurement Officer",
   },
 ];
+
+export const OPPORTUNITY_STAGES = [
+  "Qualification",
+  "Tender / Estimation",
+  "Quotation Preparation",
+  "GM Approval",
+  "Submitted to Client",
+  "Negotiation / Revision",
+  "Closed Won",
+  "Closed Lost",
+] as const;
+
+export type OpportunityStage = (typeof OPPORTUNITY_STAGES)[number];

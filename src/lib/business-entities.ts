@@ -584,6 +584,8 @@ export const BUSINESS_ENTITIES: BusinessEntityConfig[] = [
   },
 ];
 
+export const CORE_BUSINESS_ENTITIES: BusinessEntityConfig[] = BUSINESS_ENTITIES;
+
 export function getEntityByCode(code?: string): BusinessEntityConfig | undefined {
   if (!code) return undefined;
   return BUSINESS_ENTITIES.find((e) => e.code === code || e.id === code);

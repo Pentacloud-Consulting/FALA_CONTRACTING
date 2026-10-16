@@ -2,11 +2,9 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { ensureLatestDb, pushDbToMongo } from "@/lib/mongoSync";
 
 export async function getTenders(entityCode?: string, status?: string) {
   try {
-    await ensureLatestDb();
     const where: any = {};
     if (entityCode && entityCode !== "ALL") {
       where.businessEntity = { code: entityCode };
@@ -20,6 +18,7 @@ export async function getTenders(entityCode?: string, status?: string) {
       include: {
         businessEntity: true,
         customer: true,
+        opportunity: true,
         estimations: true,
         quotations: true,
         contracts: true,
@@ -34,7 +33,6 @@ export async function getTenders(entityCode?: string, status?: string) {
 
 export async function getTenderById(id: string) {
   try {
-    await ensureLatestDb();
     return await prisma.tender.findUnique({
       where: { id },
       include: {
@@ -42,6 +40,7 @@ export async function getTenderById(id: string) {
         customer: {
           include: { contacts: true },
         },
+        opportunity: true,
         estimations: {
           include: { lineItems: true },
         },
@@ -65,18 +64,20 @@ export async function getTenderById(id: string) {
 }
 
 export async function getTenderFormData() {
-  await ensureLatestDb();
-  const [entities, customers] = await Promise.all([
+  const [entities, accounts] = await Promise.all([
     prisma.businessEntity.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
-    prisma.customer.findMany({ where: { status: "Active" }, include: { contacts: true }, orderBy: { name: "asc" } }),
+    prisma.account.findMany({ where: { status: "Active" }, include: { contacts: true }, orderBy: { name: "asc" } }),
   ]);
-  return { entities, customers };
+  return { entities, accounts, customers: accounts };
 }
 
 export interface CreateTenderInput {
   businessEntityCode: string;
+  accountId?: string;
   customerId?: string;
+  newAccountName?: string;
   newCustomerName?: string;
+  opportunityId?: string;
   recordType?: string;
   branch?: string;
   title: string;
@@ -99,7 +100,6 @@ export interface CreateTenderInput {
 
 export async function createTender(input: CreateTenderInput) {
   try {
-    await ensureLatestDb();
     const businessEntity = await prisma.businessEntity.findUnique({
       where: { code: input.businessEntityCode },
     });
@@ -107,19 +107,20 @@ export async function createTender(input: CreateTenderInput) {
       throw new Error(`Business Entity not found: ${input.businessEntityCode}`);
     }
 
-    let customerId = input.customerId;
-    if (!customerId || customerId === "NEW") {
-      const customerName = input.newCustomerName?.trim() || "Client / Employer";
-      const existing = await prisma.customer.findFirst({ where: { name: customerName } });
+    let accountId = input.accountId || input.customerId;
+    const accountNameInput = input.newAccountName || input.newCustomerName;
+    if (!accountId || accountId === "NEW") {
+      const accountName = accountNameInput?.trim() || "Client / Employer";
+      const existing = await prisma.account.findFirst({ where: { name: accountName } });
       if (existing) {
-        customerId = existing.id;
+        accountId = existing.id;
       } else {
-        const custCount = await prisma.customer.count();
-        const code = `CUST-${String(custCount + 1).padStart(3, "0")}`;
-        const newCust = await prisma.customer.create({
+        const accCount = await prisma.account.count();
+        const code = `ACC-${String(accCount + 1).padStart(3, "0")}`;
+        const newAcc = await prisma.account.create({
           data: {
             code,
-            name: customerName,
+            name: accountName,
             primaryContact: input.contactPerson || "Primary Contact",
             email: input.contactEmail || "contact@client.ae",
             phone: input.contactPhone || "+971 4 000 0000",
@@ -127,7 +128,7 @@ export async function createTender(input: CreateTenderInput) {
             status: "Active",
           },
         });
-        customerId = newCust.id;
+        accountId = newAcc.id;
       }
     }
 
@@ -141,7 +142,7 @@ export async function createTender(input: CreateTenderInput) {
         tenderNumber,
         title: input.title,
         businessEntityId: businessEntity.id,
-        customerId,
+        customerId: accountId,
         branch: input.branch || "Dubai HQ",
         recordType: input.recordType || "Tender",
         contactPerson: input.contactPerson,
@@ -164,9 +165,20 @@ export async function createTender(input: CreateTenderInput) {
       },
     });
 
+    // If initiated from an opportunity, link back to Opportunity
+    if (input.opportunityId) {
+      await prisma.opportunity.update({
+        where: { id: input.opportunityId },
+        data: {
+          tenderId: newTender.id,
+          status: "Tender / Estimation",
+        },
+      });
+    }
+
     revalidatePath("/tenders");
+    revalidatePath("/opportunities");
     revalidatePath("/");
-    await pushDbToMongo();
     return { success: true, tender: newTender };
   } catch (error: any) {
     console.error("Error creating tender:", error);
@@ -176,7 +188,6 @@ export async function createTender(input: CreateTenderInput) {
 
 export async function updateTenderStatus(id: string, status: string) {
   try {
-    await ensureLatestDb();
     const updated = await prisma.tender.update({
       where: { id },
       data: { status },
@@ -184,9 +195,99 @@ export async function updateTenderStatus(id: string, status: string) {
     revalidatePath(`/tenders/${id}`);
     revalidatePath("/tenders");
     revalidatePath("/");
-    await pushDbToMongo();
     return { success: true, tender: updated };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
 }
+
+export async function updateTender(
+  id: string,
+  data: {
+    title?: string;
+    description?: string;
+    scopeOfWork?: string;
+    location?: string;
+    submissionDeadline?: string;
+    estimatedValue?: number;
+    contactPerson?: string;
+    contactEmail?: string;
+    contactPhone?: string;
+  }
+) {
+  try {
+    const updateData: any = { ...data };
+    if (data.submissionDeadline) {
+      updateData.submissionDeadline = new Date(data.submissionDeadline);
+    }
+    if (data.estimatedValue !== undefined) {
+      updateData.estimatedValue = Number(data.estimatedValue);
+    }
+
+    const updated = await prisma.tender.update({
+      where: { id },
+      data: updateData,
+    });
+
+    revalidatePath(`/tenders/${id}`);
+    revalidatePath("/tenders");
+    return { success: true, tender: updated };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function deleteTender(id: string, force: boolean = false) {
+  try {
+    const tender = await prisma.tender.findUnique({
+      where: { id },
+      include: { contracts: true, opportunity: true, estimations: true, quotations: true },
+    });
+    if (!tender) throw new Error("Tender not found");
+
+    if (!force && tender.contracts.length > 0) {
+      throw new Error("Cannot delete tender with active commercial contracts.");
+    }
+
+    // Unlink opportunity if linked
+    if (tender.opportunity) {
+      await prisma.opportunity.update({
+        where: { id: tender.opportunity.id },
+        data: { tenderId: null, status: "Qualification" },
+      });
+    }
+
+    // Clean up dependent quotations
+    for (const q of tender.quotations) {
+      await prisma.approvalRequest.deleteMany({ where: { quotationId: q.id } });
+      await prisma.approvalHistory.deleteMany({ where: { quotationId: q.id } });
+      await prisma.quotationVersion.deleteMany({ where: { quotationId: q.id } });
+      await prisma.quotationLineItem.deleteMany({ where: { quotationId: q.id } });
+      await prisma.quotation.delete({ where: { id: q.id } });
+    }
+
+    // Clean up dependent estimations
+    for (const est of tender.estimations) {
+      await prisma.estimationLineItem.deleteMany({ where: { estimationId: est.id } });
+      await prisma.estimation.delete({ where: { id: est.id } });
+    }
+
+    if (force && tender.contracts.length > 0) {
+      for (const c of tender.contracts) {
+        await prisma.contract.delete({ where: { id: c.id } });
+      }
+    }
+
+    await prisma.tender.delete({ where: { id } });
+
+    revalidatePath("/tenders");
+    revalidatePath("/opportunities");
+    revalidatePath("/estimation");
+    revalidatePath("/quotations");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error deleting tender:", error);
+    return { success: false, error: error.message };
+  }
+}
+

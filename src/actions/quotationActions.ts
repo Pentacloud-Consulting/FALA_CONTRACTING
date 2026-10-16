@@ -3,11 +3,9 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { round2 } from "@/lib/calculations";
-import { ensureLatestDb, pushDbToMongo } from "@/lib/mongoSync";
 
 export async function getQuotations(entityCode?: string, statusFilter?: string) {
   try {
-    await ensureLatestDb();
     const where: any = {};
     if (entityCode && entityCode !== "ALL") {
       where.businessEntity = { code: entityCode };
@@ -25,6 +23,7 @@ export async function getQuotations(entityCode?: string, statusFilter?: string) 
         lineItems: true,
         approvalRequests: true,
         contracts: true,
+        opportunity: true,
       },
       orderBy: { updatedAt: "desc" },
     });
@@ -36,11 +35,10 @@ export async function getQuotations(entityCode?: string, statusFilter?: string) 
 
 export async function getQuotationById(id: string) {
   try {
-    await ensureLatestDb();
     let q = await prisma.quotation.findUnique({
       where: { id },
       include: {
-        tender: true,
+        tender: { include: { opportunity: true } },
         estimation: { include: { lineItems: true } },
         businessEntity: true,
         customer: { include: { contacts: true } },
@@ -49,6 +47,7 @@ export async function getQuotationById(id: string) {
         approvalRequests: { orderBy: { submittedAt: "desc" } },
         approvalHistory: { orderBy: { timestamp: "desc" } },
         contracts: true,
+        opportunity: true,
       },
     });
 
@@ -56,7 +55,7 @@ export async function getQuotationById(id: string) {
       q = await prisma.quotation.findFirst({
         where: { quotationNumber: id },
         include: {
-          tender: true,
+          tender: { include: { opportunity: true } },
           estimation: { include: { lineItems: true } },
           businessEntity: true,
           customer: { include: { contacts: true } },
@@ -65,6 +64,7 @@ export async function getQuotationById(id: string) {
           approvalRequests: { orderBy: { submittedAt: "desc" } },
           approvalHistory: { orderBy: { timestamp: "desc" } },
           contracts: true,
+          opportunity: true,
         },
       });
     }
@@ -82,12 +82,11 @@ export async function createQuotationFromEstimation(
   fallbackData?: any
 ) {
   try {
-    await ensureLatestDb();
     let est = await prisma.estimation.findUnique({
       where: { id: estimationId },
       include: {
         lineItems: true,
-        tender: { include: { businessEntity: true, quotations: true } },
+        tender: { include: { businessEntity: true, quotations: true, opportunity: true } },
         businessEntity: true,
         quotations: true,
       },
@@ -103,7 +102,7 @@ export async function createQuotationFromEstimation(
         where: { estimationNumber: estimationId },
         include: {
           lineItems: true,
-          tender: { include: { businessEntity: true, quotations: true } },
+          tender: { include: { businessEntity: true, quotations: true, opportunity: true } },
           businessEntity: true,
           quotations: true,
         },
@@ -115,6 +114,7 @@ export async function createQuotationFromEstimation(
         where: { id: tenderId },
         include: {
           businessEntity: true,
+          opportunity: true,
           estimations: {
             include: { lineItems: true, quotations: true },
             orderBy: { createdAt: "desc" },
@@ -166,7 +166,7 @@ export async function createQuotationFromEstimation(
             },
             include: {
               lineItems: true,
-              tender: { include: { businessEntity: true, quotations: true } },
+              tender: { include: { businessEntity: true, quotations: true, opportunity: true } },
               businessEntity: true,
               quotations: true,
             },
@@ -180,7 +180,7 @@ export async function createQuotationFromEstimation(
         orderBy: { createdAt: "desc" },
         include: {
           lineItems: true,
-          tender: { include: { businessEntity: true, quotations: true } },
+          tender: { include: { businessEntity: true, quotations: true, opportunity: true } },
           businessEntity: true,
           quotations: true,
         },
@@ -266,11 +266,17 @@ export async function createQuotationFromEstimation(
     const count = await prisma.quotation.count();
     const quotationNumber = `QT-${currentYear}-${String(count + 1).padStart(4, "0")}`;
 
+    // Link opportunity if tender has one
+    const opp = est.tenderId
+      ? await prisma.opportunity.findUnique({ where: { tenderId: est.tenderId } })
+      : null;
+
     const quotation = await prisma.quotation.create({
       data: {
         quotationNumber,
         tenderId: est.tenderId,
         estimationId: est.id,
+        opportunityId: opp?.id || null,
         businessEntityId: est.businessEntityId,
         customerId: est.customerId,
         version: 1,
@@ -316,9 +322,18 @@ export async function createQuotationFromEstimation(
       data: { status: "Quotation in Preparation" },
     });
 
+    // Update opportunity stage if linked
+    if (opp) {
+      await prisma.opportunity.update({
+        where: { id: opp.id },
+        data: { status: "Quotation Preparation" },
+      });
+      revalidatePath(`/opportunities/${opp.id}`);
+      revalidatePath("/opportunities");
+    }
+
     revalidatePath(`/quotations/${quotation.id}`);
     revalidatePath("/quotations");
-    await pushDbToMongo();
     return { success: true, quotation };
   } catch (error: any) {
     console.error("Error creating quotation from estimation:", error);
@@ -328,10 +343,11 @@ export async function createQuotationFromEstimation(
 
 export async function submitQuotationForGMApproval(quotationId: string, requesterName: string) {
   try {
-    await ensureLatestDb();
     const quote = await prisma.quotation.findUnique({
       where: { id: quotationId },
-      include: { tender: true },
+      include: {
+        tender: { include: { opportunity: true } },
+      },
     });
     if (!quote) throw new Error("Quotation not found");
 
@@ -339,7 +355,9 @@ export async function submitQuotationForGMApproval(quotationId: string, requeste
       throw new Error("Quotation is already approved.");
     }
 
-    await prisma.$transaction([
+    const oppId = quote.opportunityId || quote.tender?.opportunity?.id;
+
+    const txOps: any[] = [
       prisma.quotation.update({
         where: { id: quotationId },
         data: { status: "Pending GM Approval" },
@@ -366,13 +384,27 @@ export async function submitQuotationForGMApproval(quotationId: string, requeste
           newStatus: "Pending GM Approval",
         },
       }),
-    ]);
+    ];
+
+    if (oppId) {
+      txOps.push(
+        prisma.opportunity.update({
+          where: { id: oppId },
+          data: { status: "GM Approval" },
+        })
+      );
+    }
+
+    await prisma.$transaction(txOps);
 
     revalidatePath(`/quotations/${quotationId}`);
     revalidatePath("/approvals");
     revalidatePath("/tenders");
+    if (oppId) {
+      revalidatePath(`/opportunities/${oppId}`);
+      revalidatePath("/opportunities");
+    }
     revalidatePath("/");
-    await pushDbToMongo();
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -397,7 +429,6 @@ export async function gmDecideQuotation({
   reason?: string;
 }) {
   try {
-    await ensureLatestDb();
     // 1. Strict Server Role Verification
     if (actorRole !== "GM") {
       throw new Error("Access Denied: Only users with the General Manager (GM) role can approve or reject quotations.");
@@ -409,13 +440,18 @@ export async function gmDecideQuotation({
 
     const quote = await prisma.quotation.findUnique({
       where: { id: quotationId },
-      include: { tender: true, approvalRequests: { where: { status: "PENDING" } } },
+      include: {
+        tender: { include: { opportunity: true } },
+        approvalRequests: { where: { status: "PENDING" } },
+      },
     });
     if (!quote) throw new Error("Quotation not found");
 
     if (quote.status !== "Pending GM Approval") {
       throw new Error(`Quotation is in '${quote.status}' status and cannot be decided.`);
     }
+
+    const oppId = quote.opportunityId || quote.tender?.opportunity?.id;
 
     let newQuoteStatus = "Approved";
     let newTenderStatus = "Approved";
@@ -434,7 +470,7 @@ export async function gmDecideQuotation({
       requestStatus = "CHANGES_REQUESTED";
     }
 
-    await prisma.$transaction([
+    const txOps: any[] = [
       prisma.quotation.update({
         where: { id: quotationId },
         data: { status: newQuoteStatus },
@@ -463,13 +499,38 @@ export async function gmDecideQuotation({
           newStatus: newQuoteStatus,
         },
       }),
-    ]);
+    ];
+
+    // Correction 4: GM approval keeps Opportunity at "GM Approval".
+    // When changes are requested or rejected, return Opportunity to "Quotation Preparation"
+    if (oppId) {
+      if (decision === "APPROVE") {
+        txOps.push(
+          prisma.opportunity.update({
+            where: { id: oppId },
+            data: { status: "GM Approval" }, // Keep at GM Approval until actual client submission
+          })
+        );
+      } else {
+        txOps.push(
+          prisma.opportunity.update({
+            where: { id: oppId },
+            data: { status: "Quotation Preparation" },
+          })
+        );
+      }
+    }
+
+    await prisma.$transaction(txOps);
 
     revalidatePath(`/quotations/${quotationId}`);
     revalidatePath("/approvals");
     revalidatePath("/tenders");
+    if (oppId) {
+      revalidatePath(`/opportunities/${oppId}`);
+      revalidatePath("/opportunities");
+    }
     revalidatePath("/");
-    await pushDbToMongo();
     return { success: true, newStatus: newQuoteStatus };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -478,19 +539,23 @@ export async function gmDecideQuotation({
 
 export async function submitQuotationToClient(quotationId: string, submissionMethod: string) {
   try {
-    await ensureLatestDb();
     const quote = await prisma.quotation.findUnique({
       where: { id: quotationId },
-      include: { tender: true },
+      include: {
+        tender: { include: { opportunity: true } },
+      },
     });
     if (!quote) throw new Error("Quotation not found");
 
-    // Only approved quotations may be submitted
-    if (quote.status !== "Approved") {
+    // Approved quotations or negotiated revisions may be submitted
+    const isRevised = (quote.version || 1) > 1 || quote.status === "In Negotiation";
+    if (quote.status !== "Approved" && !isRevised) {
       throw new Error("Only GM-Approved quotations may be submitted to the client as an official offer.");
     }
 
-    await prisma.$transaction([
+    const oppId = quote.opportunityId || quote.tender?.opportunity?.id;
+
+    const txOps: any[] = [
       prisma.quotation.update({
         where: { id: quotationId },
         data: {
@@ -514,11 +579,26 @@ export async function submitQuotationToClient(quotationId: string, submissionMet
           newStatus: "Submitted to Client",
         },
       }),
-    ]);
+    ];
+
+    // Correction 4: Advance Opportunity to "Submitted to Client" only upon explicit client submission action
+    if (oppId) {
+      txOps.push(
+        prisma.opportunity.update({
+          where: { id: oppId },
+          data: { status: "Submitted to Client" },
+        })
+      );
+    }
+
+    await prisma.$transaction(txOps);
 
     revalidatePath(`/quotations/${quotationId}`);
     revalidatePath("/tenders");
-    await pushDbToMongo();
+    if (oppId) {
+      revalidatePath(`/opportunities/${oppId}`);
+      revalidatePath("/opportunities");
+    }
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -537,43 +617,117 @@ export async function recordClientDecision({
   clientPoNumber?: string;
 }) {
   try {
-    await ensureLatestDb();
     let quote = await prisma.quotation.findUnique({
       where: { id: quotationId },
-      include: { tender: true },
+      include: {
+        tender: { include: { opportunity: true } },
+        lineItems: true,
+      },
     });
     if (!quote) {
       quote = await prisma.quotation.findFirst({
         where: { quotationNumber: quotationId },
-        include: { tender: true },
+        include: {
+          tender: { include: { opportunity: true } },
+          lineItems: true,
+        },
       });
     }
     if (!quote) throw new Error("Quotation not found");
 
-    const newStatus = decision === "Accepted" ? "Accepted" : decision === "Rejected" ? "Rejected" : "Revision Requested";
+    const newQuoteStatus =
+      decision === "Accepted"
+        ? "Accepted"
+        : decision === "Rejected"
+        ? "Rejected"
+        : "Revision Requested";
 
-    await prisma.quotation.update({
-      where: { id: quote.id },
-      data: {
-        clientDecision: decision,
-        clientDecisionDate: new Date(),
-        clientComments: comments || null,
-        clientPoNumber: clientPoNumber || null,
-        status: newStatus,
-      },
-    });
+    const oppId = quote.opportunityId || quote.tender?.opportunity?.id;
 
+    // Snapshot version before revision
     if (decision === "Revision Requested") {
-      await prisma.tender.update({
-        where: { id: quote.tenderId },
-        data: { status: "Revision Requested" },
+      const currentVersionCount = await prisma.quotationVersion.count({
+        where: { quotationId: quote.id },
+      });
+      await prisma.quotationVersion.create({
+        data: {
+          quotationId: quote.id,
+          versionNumber: currentVersionCount + 1,
+          snapshotJson: JSON.stringify({
+            subtotal: quote.subtotal,
+            tax: quote.tax,
+            totalAmount: quote.totalAmount,
+            lineItems: quote.lineItems,
+            clientComments: comments,
+            createdAt: new Date(),
+          }),
+        },
       });
     }
+
+    const txOps: any[] = [
+      prisma.quotation.update({
+        where: { id: quote.id },
+        data: {
+          clientDecision: decision,
+          clientDecisionDate: new Date(),
+          clientComments: comments || null,
+          clientPoNumber: clientPoNumber || null,
+          status: newQuoteStatus,
+        },
+      }),
+    ];
+
+    if (decision === "Accepted") {
+      if (oppId) {
+        txOps.push(
+          prisma.opportunity.update({
+            where: { id: oppId },
+            data: { status: "Closed Won" },
+          })
+        );
+      }
+    } else if (decision === "Revision Requested") {
+      txOps.push(
+        prisma.tender.update({
+          where: { id: quote.tenderId },
+          data: { status: "Revision Requested" },
+        })
+      );
+      if (oppId) {
+        txOps.push(
+          prisma.opportunity.update({
+            where: { id: oppId },
+            data: { status: "Negotiation / Revision" },
+          })
+        );
+      }
+    } else if (decision === "Rejected") {
+      txOps.push(
+        prisma.tender.update({
+          where: { id: quote.tenderId },
+          data: { status: "Cancelled" },
+        })
+      );
+      if (oppId) {
+        txOps.push(
+          prisma.opportunity.update({
+            where: { id: oppId },
+            data: { status: "Closed Lost" },
+          })
+        );
+      }
+    }
+
+    await prisma.$transaction(txOps);
 
     revalidatePath(`/quotations/${quote.id}`);
     revalidatePath("/quotations");
     revalidatePath("/tenders");
-    await pushDbToMongo();
+    if (oppId) {
+      revalidatePath(`/opportunities/${oppId}`);
+      revalidatePath("/opportunities");
+    }
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -595,15 +749,22 @@ export async function convertQuotationToContract({
   agreedScope?: string;
 }) {
   try {
-    await ensureLatestDb();
     let quote = await prisma.quotation.findUnique({
       where: { id: quotationId },
-      include: { tender: true, customer: true, contracts: true },
+      include: {
+        tender: { include: { opportunity: true } },
+        customer: true,
+        contracts: true,
+      },
     });
     if (!quote) {
       quote = await prisma.quotation.findFirst({
         where: { quotationNumber: quotationId },
-        include: { tender: true, customer: true, contracts: true },
+        include: {
+          tender: { include: { opportunity: true } },
+          customer: true,
+          contracts: true,
+        },
       });
     }
     if (!quote) throw new Error("Quotation not found");
@@ -617,16 +778,21 @@ export async function convertQuotationToContract({
       throw new Error(`A contract (${quote.contracts[0].contractNumber}) has already been generated for this quotation.`);
     }
 
+    const oppId = quote.opportunityId || quote.tender?.opportunity?.id;
+    const contactId = quote.tender?.opportunity?.contactId || null;
+
     const currentYear = new Date().getFullYear();
     const count = await prisma.contract.count();
     const contractNumber = `CON-${currentYear}-${String(count + 1).padStart(4, "0")}`;
 
-    const [contract] = await prisma.$transaction([
+    const txOps: any[] = [
       prisma.contract.create({
         data: {
           contractNumber,
           tenderId: quote.tenderId,
           quotationId: quote.id,
+          opportunityId: oppId || null,
+          contactId: contactId,
           customerId: quote.customerId,
           businessEntityId: quote.businessEntityId,
           contractValue: quote.totalAmount,
@@ -646,15 +812,229 @@ export async function convertQuotationToContract({
         where: { id: quote.id },
         data: { status: "Awarded" },
       }),
-    ]);
+    ];
+
+    if (oppId) {
+      txOps.push(
+        prisma.opportunity.update({
+          where: { id: oppId },
+          data: { status: "Closed Won" },
+        })
+      );
+    }
+
+    const [contract] = await prisma.$transaction(txOps);
 
     revalidatePath(`/quotations/${quotationId}`);
     revalidatePath("/contracts");
     revalidatePath("/tenders");
+    if (oppId) {
+      revalidatePath(`/opportunities/${oppId}`);
+      revalidatePath("/opportunities");
+    }
     revalidatePath("/");
-    await pushDbToMongo();
     return { success: true, contract };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
 }
+
+export async function updateQuotation(
+  id: string,
+  data: {
+    status?: string;
+    validityPeriod?: number;
+    paymentTerms?: string;
+    deliveryTerms?: string;
+    notes?: string;
+  }
+) {
+  try {
+    const updated = await prisma.quotation.update({
+      where: { id },
+      data,
+    });
+    revalidatePath(`/quotations/${id}`);
+    revalidatePath("/quotations");
+    return { success: true, quotation: updated };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function deleteQuotation(id: string) {
+  try {
+    const quote = await prisma.quotation.findUnique({
+      where: { id },
+      include: { contracts: true },
+    });
+    if (!quote) throw new Error("Quotation not found");
+
+    if (quote.contracts.length > 0) {
+      throw new Error("Cannot delete quotation with active awarded contract.");
+    }
+
+    await prisma.approvalRequest.deleteMany({ where: { quotationId: id } });
+    await prisma.approvalHistory.deleteMany({ where: { quotationId: id } });
+    await prisma.quotationVersion.deleteMany({ where: { quotationId: id } });
+    await prisma.quotationLineItem.deleteMany({ where: { quotationId: id } });
+
+    await prisma.quotation.delete({ where: { id } });
+
+    revalidatePath("/quotations");
+    revalidatePath("/approvals");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Create a new quotation version with an applied client discount (e.g., V2 after client discount request)
+ */
+export async function createQuotationRevisionWithDiscount({
+  baseQuotationId,
+  discountType,
+  discountValue,
+  comments,
+  requesterName,
+}: {
+  baseQuotationId: string;
+  discountType: "PERCENT" | "FIXED";
+  discountValue: number;
+  comments?: string;
+  requesterName?: string;
+}) {
+  try {
+    let base = await prisma.quotation.findUnique({
+      where: { id: baseQuotationId },
+      include: {
+        lineItems: true,
+        tender: { include: { opportunity: true } },
+        opportunity: true,
+      },
+    });
+    if (!base) {
+      base = await prisma.quotation.findFirst({
+        where: { quotationNumber: baseQuotationId },
+        include: {
+          lineItems: true,
+          tender: { include: { opportunity: true } },
+          opportunity: true,
+        },
+      });
+    }
+    if (!base) throw new Error("Base quotation not found");
+
+    // Count existing quotations for this tender or opportunity to determine next version number
+    const existingQuotes = await prisma.quotation.findMany({
+      where: {
+        OR: [
+          { tenderId: base.tenderId },
+          ...(base.opportunityId ? [{ opportunityId: base.opportunityId }] : []),
+        ],
+      },
+    });
+
+    const maxVer = Math.max(...existingQuotes.map((q) => q.version || 1), 1);
+    const newVersion = maxVer + 1;
+
+    // Calculate new discount and totals
+    const subtotal = round2(base.subtotal || 0);
+    let calculatedDiscount = 0;
+    if (discountType === "PERCENT") {
+      calculatedDiscount = round2((subtotal * discountValue) / 100);
+    } else {
+      calculatedDiscount = round2(discountValue);
+    }
+    if (calculatedDiscount > subtotal) calculatedDiscount = subtotal;
+
+    const netTaxable = round2(subtotal - calculatedDiscount);
+    const tax = round2(netTaxable * 0.05); // UAE VAT 5%
+    const totalAmount = round2(netTaxable + tax);
+
+    // Build new quotation number: e.g. QT-2026-0004-V2
+    const cleanBaseNum = base.quotationNumber.replace(/-V\d+$/i, "");
+    const newQuotationNumber = `${cleanBaseNum}-V${newVersion}`;
+
+    // Mark base quotation as superseded / revision requested
+    await prisma.quotation.update({
+      where: { id: base.id },
+      data: {
+        status: "Revision Requested",
+        clientDecision: "Revision Requested",
+      },
+    });
+
+    // Create the new Quotation record
+    const newQuote = await prisma.quotation.create({
+      data: {
+        quotationNumber: newQuotationNumber,
+        tenderId: base.tenderId,
+        estimationId: base.estimationId,
+        businessEntityId: base.businessEntityId,
+        opportunityId: base.opportunityId || base.tender?.opportunity?.id,
+        customerId: base.customerId,
+        version: newVersion,
+        subtotal,
+        discount: calculatedDiscount,
+        tax,
+        totalAmount,
+        paymentTerms: base.paymentTerms,
+        deliveryTerms: base.deliveryTerms,
+        validityDays: base.validityDays,
+        assumptions: base.assumptions,
+        exclusions: base.exclusions,
+        status: "Approved", // Approved & ready to send to client
+        clientDecision: "Pending",
+        clientComments:
+          comments ||
+          `Version ${newVersion} created with ${discountValue}${
+            discountType === "PERCENT" ? "%" : " AED"
+          } client requested discount.`,
+        submittedToClientAt: null,
+        submissionMethod: "Negotiated Revision",
+        lineItems: {
+          create: base.lineItems.map((item) => ({
+            description: item.description,
+            quantity: item.quantity,
+            unit: item.unit,
+            unitRate: item.unitRate,
+            lineTotal: item.lineTotal,
+          })),
+        },
+      },
+    });
+
+    // Update opportunity status to "Negotiation / Revision" (Stage 6) with new expected value
+    const oppId = base.opportunityId || base.tender?.opportunity?.id;
+    if (oppId) {
+      await prisma.opportunity.update({
+        where: { id: oppId },
+        data: {
+          status: "Negotiation / Revision",
+          expectedValue: totalAmount,
+        },
+      });
+      if (base.tenderId) {
+        await prisma.tender.update({
+          where: { id: base.tenderId },
+          data: { status: "Negotiation / Revision" },
+        });
+      }
+      revalidatePath(`/opportunities/${oppId}`);
+      revalidatePath("/opportunities");
+    }
+
+    revalidatePath(`/quotations/${newQuote.id}`);
+    revalidatePath(`/quotations/${base.id}`);
+    revalidatePath("/quotations");
+    revalidatePath(`/tenders/${base.tenderId}`);
+
+    return { success: true, quotation: newQuote };
+  } catch (error: any) {
+    console.error("Error creating quotation revision:", error);
+    return { success: false, error: error.message };
+  }
+}
+

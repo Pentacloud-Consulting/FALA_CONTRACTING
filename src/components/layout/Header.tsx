@@ -7,7 +7,6 @@ import { DEMO_USERS } from "@/lib/types";
 import {
   Building2,
   ChevronDown,
-  Plus,
   Search,
   Bell,
   ShieldCheck,
@@ -237,15 +236,6 @@ export default function Header() {
             </div>
           )}
         </div>
-
-        {/* Quick Action: New Tender */}
-        <Link
-          href="/tenders/new"
-          className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 active:bg-blue-800 transition"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          <span>Create Tender</span>
-        </Link>
 
         {/* Sign Out Button */}
         <button

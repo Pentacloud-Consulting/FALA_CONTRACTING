@@ -21,7 +21,7 @@ export default async function NewTenderPage({
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition"
         >
           <ChevronLeft className="h-4 w-4" />
-          <span>Back to Tenders Register</span>
+          <span>Back to Tender Management</span>
         </Link>
         <span className="text-xs text-slate-400">
           Step 1 begins with Business Entity selection

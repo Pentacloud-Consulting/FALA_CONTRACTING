@@ -24,6 +24,8 @@ import {
   Search,
   BarChart2,
   Users,
+  Landmark,
+  CheckCircle2,
 } from "lucide-react";
 
 interface UnifiedExecutiveCRMProps {
@@ -44,6 +46,7 @@ export default function UnifiedExecutiveCRM({
   const [activeTab, setActiveTab] = useState<"overview" | "crm">(
     initialTab === "crm" ? "crm" : "overview"
   );
+  const [pipelineTableTab, setPipelineTableTab] = useState<"tenders" | "opportunities" | "leads">("tenders");
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [submittingCustomer, setSubmittingCustomer] = useState(false);
   const [clientSearchTerm, setClientSearchTerm] = useState("");
@@ -60,8 +63,20 @@ export default function UnifiedExecutiveCRM({
     address: "",
   });
 
-  const { kpi, charts, recentTenders, pendingApprovals, entityBreakdown } = dashboardData;
+  const { kpi, charts, recentTenders, pendingApprovals, entityBreakdown, recentProjects } = dashboardData;
   const { leads, customers, contacts, opportunities } = crmData;
+
+  // CRM Pipeline metrics
+  const totalLeads = leads?.length || 0;
+  const qualifiedLeads = leads?.filter((l: any) => l.status === "Qualified" || l.status === "Converted").length || 0;
+  const totalLeadsValue = leads?.reduce((sum: number, l: any) => sum + (l.estimatedValue || 0), 0) || 0;
+
+  const totalAccounts = customers?.length || 0;
+  const totalContacts = contacts?.length || 0;
+
+  const totalOpportunities = opportunities?.length || 0;
+  const totalOppValue = opportunities?.reduce((sum: number, o: any) => sum + (o.expectedValue || 0), 0) || 0;
+  const activeOpportunities = opportunities?.filter((o: any) => o.status !== "Closed Won" && o.status !== "Closed Lost").length || 0;
 
   const handleTabChange = (tab: "overview" | "crm") => {
     setActiveTab(tab);
@@ -175,208 +190,187 @@ export default function UnifiedExecutiveCRM({
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* 2. ENTERPRISE EPC CYCLE RIBBON                                           */}
-      {/* ========================================================================= */}
-      <div className="rounded-xl border border-slate-200/90 bg-white px-4 py-2 shadow-xs flex items-center justify-between text-xs">
-        <div className="flex items-center gap-2 overflow-x-auto">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 shrink-0">
-            ENTERPRISE EPC CYCLE:
-          </span>
-          <div className="flex items-center gap-2 text-xs font-medium shrink-0">
-            <Link
-              href="/tenders"
-              className="inline-flex items-center gap-1 text-blue-600 font-semibold hover:underline"
-            >
-              <span className="w-4 h-4 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[9px] font-bold">
-                1
-              </span>
-              <span>Tender Genesis</span>
-            </Link>
-            <ChevronRight className="h-3.5 w-3.5 text-slate-300 shrink-0" />
-            <Link
-              href="/estimation"
-              className="inline-flex items-center gap-1 text-blue-600 font-semibold hover:underline"
-            >
-              <span className="w-4 h-4 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[9px] font-bold">
-                2
-              </span>
-              <span>BOQ Estimation</span>
-            </Link>
-            <ChevronRight className="h-3.5 w-3.5 text-slate-300 shrink-0" />
-            <Link
-              href="/approvals"
-              className="inline-flex items-center gap-1 text-amber-600 font-semibold hover:underline"
-            >
-              <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-[9px] font-bold">
-                3
-              </span>
-              <span>GM Governance Gate</span>
-            </Link>
-            <ChevronRight className="h-3.5 w-3.5 text-slate-300 shrink-0" />
-            <Link
-              href="/contracts"
-              className="inline-flex items-center gap-1 text-emerald-600 font-semibold hover:underline"
-            >
-              <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[9px] font-bold">
-                4
-              </span>
-              <span>Commercial Contract</span>
-            </Link>
-            <ChevronRight className="h-3.5 w-3.5 text-slate-300 shrink-0" />
-            <Link
-              href="/projects"
-              className="inline-flex items-center gap-1 text-purple-600 font-semibold hover:underline"
-            >
-              <span className="w-4 h-4 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-[9px] font-bold">
-                5
-              </span>
-              <span>Site Execution</span>
-            </Link>
-            <ChevronRight className="h-3.5 w-3.5 text-slate-300 shrink-0" />
-            <Link
-              href="/procurement"
-              className="inline-flex items-center gap-1 text-cyan-600 font-semibold hover:underline"
-            >
-              <span className="w-4 h-4 rounded-full bg-cyan-100 text-cyan-600 flex items-center justify-center text-[9px] font-bold">
-                6
-              </span>
-              <span>Procurement (PO/GRN)</span>
-            </Link>
-          </div>
-        </div>
 
-        <div className="hidden sm:flex items-center gap-2 text-[11px] font-semibold text-slate-500 shrink-0 pl-3">
-          <span>Demo Flow Active</span>
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-        </div>
-      </div>
 
       {/* ========================================================================= */}
-      {/* VIEW A: EXECUTIVE OVERVIEW (EXACT REPLICA OF SAMPLE DESIGN)              */}
+      {/* VIEW A: EXECUTIVE OVERVIEW (REDESIGNED 6-STAGE PIPELINE METRICS)          */}
       {/* ========================================================================= */}
       {activeTab === "overview" && (
         <div className="space-y-3">
-          {/* 4 KPI Cards (Generous & Prestigious Proportions) */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-            {/* KPI 1: Active Bidding Pipeline */}
-            <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-xs flex flex-col justify-between">
+          {/* 6 Reordered Commercial Pipeline KPI Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+            {/* KPI 1: LEADS */}
+            <Link
+              href="/leads"
+              className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-xs flex flex-col justify-between hover:border-blue-400 hover:shadow-sm transition group"
+            >
               <div className="flex items-start justify-between">
-                <div className="flex items-center gap-1.5">
-                  <div className="p-1.5 rounded-md bg-blue-50 text-blue-600">
-                    <Building2 className="h-3.5 w-3.5" />
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="p-1.5 rounded-md bg-blue-50 text-blue-600 shrink-0">
+                    <Users className="h-3.5 w-3.5" />
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                    ACTIVE BIDDING PIPELINE
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate">
+                    LEADS
                   </span>
                 </div>
-                <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
-                  <FileSpreadsheet className="h-4 w-4" />
-                </div>
+                <ArrowUpRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-blue-600 shrink-0 transition" />
               </div>
               <div className="mt-2">
                 <div className="text-xl font-black text-slate-900 tracking-tight">
-                  {formatAED(kpi.totalTenderValue)}
+                  {totalLeads}
                 </div>
-                <div className="text-xs mt-1">
-                  <span className="font-bold text-blue-600">{kpi.activeTendersCount} Active</span>{" "}
-                  <span className="text-slate-400">• {kpi.totalTendersCount} Total Bids</span>
-                </div>
-              </div>
-            </div>
-
-            {/* KPI 2: GM Governance Gate */}
-            <Link
-              href="/approvals"
-              className="rounded-xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-xs flex flex-col justify-between hover:border-amber-300 transition"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-1.5">
-                  <div className="p-1.5 rounded-md bg-amber-50 text-amber-600">
-                    <ShieldAlert className="h-3.5 w-3.5" />
+                <div className="text-[11px] mt-0.5">
+                  <span className="font-bold text-blue-600">{qualifiedLeads} Qualified</span>
+                  <div className="text-slate-400 truncate text-[10px] mt-0.5">
+                    {totalLeadsValue > 0 ? formatAED(totalLeadsValue) : "Active Intake"}
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                    GM GOVERNANCE GATE
-                  </span>
-                </div>
-                <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-xs">
-                  <ShieldAlert className="h-4 w-4" />
-                </div>
-              </div>
-              <div className="mt-2">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-black text-slate-900 leading-none">
-                    {kpi.pendingApprovalsCount}
-                  </span>
-                  <span className="text-xs font-bold text-slate-700">Offers Pending</span>
-                </div>
-                <div className="text-xs font-bold text-amber-600 mt-1 flex items-center gap-1">
-                  <span>
-                    {kpi.pendingApprovalsCount === 0
-                      ? "100% Cleared & Compliant"
-                      : "Mandatory Review Required"}
-                  </span>
-                  <ArrowUpRight className="h-3.5 w-3.5" />
                 </div>
               </div>
             </Link>
 
-            {/* KPI 3: Awarded Contracts */}
+            {/* KPI 2: ACCOUNTS */}
             <Link
-              href="/contracts"
-              className="rounded-xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-xs flex flex-col justify-between hover:border-emerald-300 transition"
+              href="/accounts"
+              className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-xs flex flex-col justify-between hover:border-blue-400 hover:shadow-sm transition group"
             >
               <div className="flex items-start justify-between">
-                <div className="flex items-center gap-1.5">
-                  <div className="p-1.5 rounded-md bg-emerald-50 text-emerald-600">
-                    <FileSignature className="h-3.5 w-3.5" />
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="p-1.5 rounded-md bg-blue-50 text-[#0176d3] shrink-0">
+                    <Landmark className="h-3.5 w-3.5" />
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                    AWARDED CONTRACTS
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate">
+                    ACCOUNTS
                   </span>
                 </div>
-                <div className="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center shadow-xs">
-                  <FileSignature className="h-4 w-4" />
-                </div>
+                <ArrowUpRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-[#0176d3] shrink-0 transition" />
               </div>
               <div className="mt-2">
                 <div className="text-xl font-black text-slate-900 tracking-tight">
-                  {formatAED(kpi.totalContractValue)}
+                  {totalAccounts}
                 </div>
-                <div className="text-xs mt-1">
-                  <span className="font-bold text-emerald-600">{kpi.contractsCount} Backed</span>{" "}
-                  <span className="text-slate-400">• 100% Employer PO</span>
+                <div className="text-[11px] mt-0.5">
+                  <span className="font-bold text-[#0176d3]">{totalContacts} Contacts</span>
+                  <div className="text-slate-400 truncate text-[10px] mt-0.5">
+                    Government &amp; Tier-1
+                  </div>
                 </div>
               </div>
             </Link>
 
-            {/* KPI 4: Project Execution */}
+            {/* KPI 3: OPPORTUNITIES */}
             <Link
-              href="/projects"
-              className="rounded-xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-xs flex flex-col justify-between hover:border-purple-300 transition"
+              href="/opportunities"
+              className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-xs flex flex-col justify-between hover:border-blue-400 hover:shadow-sm transition group"
             >
               <div className="flex items-start justify-between">
-                <div className="flex items-center gap-1.5">
-                  <div className="p-1.5 rounded-md bg-purple-50 text-purple-600">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="p-1.5 rounded-md bg-blue-50 text-[#0176d3] shrink-0">
                     <FolderKanban className="h-3.5 w-3.5" />
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                    PROJECT EXECUTION
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate">
+                    OPPORTUNITIES
                   </span>
                 </div>
-                <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center shadow-xs">
-                  <BarChart2 className="h-4 w-4" />
-                </div>
+                <ArrowUpRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-[#0176d3] shrink-0 transition" />
               </div>
               <div className="mt-2">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-black text-slate-900 leading-none">
-                    {kpi.activeProjectsCount}
-                  </span>
-                  <span className="text-xs font-bold text-slate-700">Active Site</span>
+                <div className="text-lg font-black text-slate-900 tracking-tight truncate">
+                  {formatAED(totalOppValue)}
                 </div>
-                <div className="text-xs mt-1 text-slate-500">
-                  Budget: <strong className="font-bold text-purple-700">{formatAED(kpi.totalProjectBudget)}</strong>
+                <div className="text-[11px] mt-0.5">
+                  <span className="font-bold text-[#0176d3]">{totalOpportunities} Deals</span>
+                  <div className="text-slate-400 truncate text-[10px] mt-0.5">
+                    {activeOpportunities} Active Stages
+                  </div>
+                </div>
+              </div>
+            </Link>
+
+            {/* KPI 4: TENDER & COST */}
+            <Link
+              href="/tenders"
+              className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-xs flex flex-col justify-between hover:border-blue-400 hover:shadow-sm transition group"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="p-1.5 rounded-md bg-blue-50 text-[#0176d3] shrink-0">
+                    <FileSpreadsheet className="h-3.5 w-3.5" />
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate">
+                    TENDER &amp; COST
+                  </span>
+                </div>
+                <ArrowUpRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-[#0176d3] shrink-0 transition" />
+              </div>
+              <div className="mt-2">
+                <div className="text-lg font-black text-slate-900 tracking-tight truncate">
+                  {formatAED(kpi.totalTenderValue)}
+                </div>
+                <div className="text-[11px] mt-0.5">
+                  <span className="font-bold text-[#0176d3]">{kpi.activeTendersCount} Active</span>
+                  <div className="text-slate-400 truncate text-[10px] mt-0.5">
+                    {kpi.totalTendersCount} Total Bids
+                  </div>
+                </div>
+              </div>
+            </Link>
+
+            {/* KPI 5: QUOTATION & GM GATE */}
+            <Link
+              href="/approvals"
+              className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-xs flex flex-col justify-between hover:border-blue-400 hover:shadow-sm transition group"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="p-1.5 rounded-md bg-blue-50 text-[#0176d3] shrink-0">
+                    <ShieldAlert className="h-3.5 w-3.5" />
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate">
+                    GM APPROVALS
+                  </span>
+                </div>
+                <ArrowUpRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-[#0176d3] shrink-0 transition" />
+              </div>
+              <div className="mt-2">
+                <div className="text-xl font-black text-slate-900 tracking-tight">
+                  {kpi.pendingApprovalsCount} <span className="text-xs font-bold text-slate-500">Pending</span>
+                </div>
+                <div className="text-[11px] mt-0.5">
+                  <span className="font-bold text-[#0176d3]">
+                    {kpi.pendingApprovalsCount === 0 ? "100% Cleared" : "Mandatory Review"}
+                  </span>
+                  <div className="text-slate-400 truncate text-[10px] mt-0.5">
+                    {formatAED(kpi.totalQuotationValue)} Quoted
+                  </div>
+                </div>
+              </div>
+            </Link>
+
+            {/* KPI 6: CONTRACTS & REVENUE */}
+            <Link
+              href="/contracts"
+              className="rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-xs flex flex-col justify-between hover:border-blue-400 hover:shadow-sm transition group"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="p-1.5 rounded-md bg-blue-50 text-[#0176d3] shrink-0">
+                    <FileSignature className="h-3.5 w-3.5" />
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate">
+                    CONTRACTS
+                  </span>
+                </div>
+                <ArrowUpRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-[#0176d3] shrink-0 transition" />
+              </div>
+              <div className="mt-2">
+                <div className="text-lg font-black text-slate-900 tracking-tight truncate">
+                  {formatAED(kpi.totalContractValue)}
+                </div>
+                <div className="text-[11px] mt-0.5">
+                  <span className="font-bold text-[#0176d3]">{kpi.contractsCount} Backed</span>
+                  <div className="text-slate-400 truncate text-[10px] mt-0.5">
+                    {kpi.activeProjectsCount} Sites Active
+                  </div>
                 </div>
               </div>
             </Link>
@@ -392,34 +386,84 @@ export default function UnifiedExecutiveCRM({
                 projectStatus={charts.projectStatus}
               />
 
-              {/* Recent Tender Pipeline Table (Directly under charts with generous row heights) */}
+              {/* Recent Commercial Pipeline Table (Segmented: Tenders / Opportunities / Leads) */}
               <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-xs">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
                     <div className="p-1.5 rounded-md bg-blue-50 text-blue-600 shadow-xs">
-                      <Building2 className="h-4 w-4" />
+                      {pipelineTableTab === "tenders" ? (
+                        <FileSpreadsheet className="h-4 w-4" />
+                      ) : pipelineTableTab === "opportunities" ? (
+                        <FolderKanban className="h-4 w-4" />
+                      ) : (
+                        <Users className="h-4 w-4" />
+                      )}
                     </div>
                     <div>
                       <h3 className="text-xs font-bold text-slate-900 leading-none">
-                        Recent Tender Pipeline
+                        {pipelineTableTab === "tenders"
+                          ? "Recent Tender Pipeline"
+                          : pipelineTableTab === "opportunities"
+                          ? "Commercial Opportunities"
+                          : "Qualified Leads"}
                       </h3>
                       <p className="text-[11px] text-slate-400 mt-0.5">
-                        Active and submitted bids across operating subsidiaries
+                        {pipelineTableTab === "tenders"
+                          ? "Active and submitted bids across operating subsidiaries"
+                          : pipelineTableTab === "opportunities"
+                          ? "Active deal stages from Qualification to GM approval"
+                          : "Prospects undergoing business unit qualification"}
                       </p>
                     </div>
                   </div>
+
+                  {/* Segmented Table Controls & Links */}
                   <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleTabChange("crm")}
-                      className="text-xs font-semibold text-slate-500 hover:text-slate-800 transition"
-                    >
-                      CRM Clients ({customers.length})
-                    </button>
-                    <span className="text-slate-300">—</span>
+                    <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setPipelineTableTab("tenders")}
+                        className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                          pipelineTableTab === "tenders"
+                            ? "bg-white text-blue-700 shadow-xs"
+                            : "text-slate-500 hover:text-slate-800"
+                        }`}
+                      >
+                        Tenders ({recentTenders.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPipelineTableTab("opportunities")}
+                        className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                          pipelineTableTab === "opportunities"
+                            ? "bg-white text-blue-700 shadow-xs"
+                            : "text-slate-500 hover:text-slate-800"
+                        }`}
+                      >
+                        OPP ({opportunities.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPipelineTableTab("leads")}
+                        className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                          pipelineTableTab === "leads"
+                            ? "bg-white text-blue-700 shadow-xs"
+                            : "text-slate-500 hover:text-slate-800"
+                        }`}
+                      >
+                        Leads ({leads.length})
+                      </button>
+                    </div>
+
                     <Link
-                      href="/tenders"
-                      className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-0.5"
+                      href={
+                        pipelineTableTab === "tenders"
+                          ? "/tenders"
+                          : pipelineTableTab === "opportunities"
+                          ? "/opportunities"
+                          : "/leads"
+                      }
+                      className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-0.5 shrink-0"
                     >
                       <span>Full Register</span>
                       <ArrowUpRight className="h-3.5 w-3.5" />
@@ -428,76 +472,219 @@ export default function UnifiedExecutiveCRM({
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-100 text-[10px] font-bold uppercase text-slate-400">
-                        <th className="pb-2">TENDER #</th>
-                        <th className="pb-2">TITLE &amp; CLIENT</th>
-                        <th className="pb-2">DIVISION</th>
-                        <th className="pb-2">STATUS</th>
-                        <th className="pb-2 text-right">VALUE (AED)</th>
-                        <th className="pb-2 text-right">ACTION</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {recentTenders.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="py-6 text-center text-slate-400">
-                            <FileSpreadsheet className="h-6 w-6 text-slate-300 mx-auto mb-1" />
-                            <span className="font-semibold text-slate-700 text-xs block">
-                              No tenders registered yet
-                            </span>
-                          </td>
+                  {pipelineTableTab === "tenders" && (
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-100 text-[10px] font-bold uppercase text-slate-400">
+                          <th className="pb-2">TENDER #</th>
+                          <th className="pb-2">TITLE &amp; CLIENT</th>
+                          <th className="pb-2">DIVISION</th>
+                          <th className="pb-2">STATUS</th>
+                          <th className="pb-2 text-right">VALUE (AED)</th>
+                          <th className="pb-2 text-right">ACTION</th>
                         </tr>
-                      ) : (
-                        recentTenders.map((t: any) => (
-                          <tr key={t.id} className="hover:bg-slate-50/70 transition">
-                            <td className="py-2.5">
-                              <span className="font-mono font-bold text-slate-900 text-xs bg-slate-100 px-2 py-0.5 rounded border border-slate-200/80">
-                                {t.tenderNumber}
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {recentTenders.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="py-6 text-center text-slate-400">
+                              <FileSpreadsheet className="h-6 w-6 text-slate-300 mx-auto mb-1" />
+                              <span className="font-semibold text-slate-700 text-xs block">
+                                No tenders registered yet
                               </span>
-                            </td>
-                            <td className="py-2.5 pr-2">
-                              <div className="font-bold text-slate-900 text-xs">{t.title}</div>
-                              <div className="text-[11px] text-slate-400">{t.customer?.name || "Client"}</div>
-                            </td>
-                            <td className="py-2.5">
-                              <span className="rounded bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 border border-blue-100">
-                                {t.businessEntity.shortName}
-                              </span>
-                            </td>
-                            <td className="py-2.5">
-                              <span
-                                className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                                  t.status === "Awarded"
-                                    ? "bg-emerald-100 text-emerald-800"
-                                    : t.status === "Pending GM Approval"
-                                    ? "bg-amber-100 text-amber-800"
-                                    : t.status === "Approved"
-                                    ? "bg-blue-100 text-blue-800"
-                                    : "bg-slate-100 text-slate-700"
-                                }`}
-                              >
-                                {t.status}
-                              </span>
-                            </td>
-                            <td className="py-2.5 text-right font-mono font-bold text-slate-900 text-xs">
-                              {formatAED(t.estimatedValue)}
-                            </td>
-                            <td className="py-2.5 text-right">
-                              <Link
-                                href={`/tenders/${t.id}`}
-                                className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-600 hover:bg-blue-100 transition"
-                              >
-                                <span>Open</span>
-                                <ChevronRight className="h-3 w-3" />
-                              </Link>
                             </td>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                        ) : (
+                          recentTenders.map((t: any) => (
+                            <tr key={t.id} className="hover:bg-slate-50/70 transition">
+                              <td className="py-2.5">
+                                <span className="font-mono font-bold text-slate-900 text-xs bg-slate-100 px-2 py-0.5 rounded border border-slate-200/80">
+                                  {t.tenderNumber}
+                                </span>
+                              </td>
+                              <td className="py-2.5 pr-2">
+                                <div className="font-bold text-slate-900 text-xs">{t.title}</div>
+                                <div className="text-[11px] text-slate-400">{t.customer?.name || "Client"}</div>
+                              </td>
+                              <td className="py-2.5">
+                                <span className="rounded bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 border border-blue-100">
+                                  {t.businessEntity.shortName}
+                                </span>
+                              </td>
+                              <td className="py-2.5">
+                                <span
+                                  className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                                    t.status === "Awarded"
+                                      ? "bg-emerald-100 text-emerald-800"
+                                      : t.status === "Pending GM Approval"
+                                      ? "bg-amber-100 text-amber-800"
+                                      : t.status === "Approved"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : "bg-slate-100 text-slate-700"
+                                  }`}
+                                >
+                                  {t.status}
+                                </span>
+                              </td>
+                              <td className="py-2.5 text-right font-mono font-bold text-slate-900 text-xs">
+                                {formatAED(t.estimatedValue)}
+                              </td>
+                              <td className="py-2.5 text-right">
+                                <Link
+                                  href={`/tenders/${t.id}`}
+                                  className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-600 hover:bg-blue-100 transition"
+                                >
+                                  <span>Open</span>
+                                  <ChevronRight className="h-3 w-3" />
+                                </Link>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  )}
+
+                  {pipelineTableTab === "opportunities" && (
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-100 text-[10px] font-bold uppercase text-slate-400">
+                          <th className="pb-2">OPP #</th>
+                          <th className="pb-2">DEAL &amp; CLIENT</th>
+                          <th className="pb-2">DIVISION</th>
+                          <th className="pb-2">STAGE</th>
+                          <th className="pb-2 text-right">EXPECTED (AED)</th>
+                          <th className="pb-2 text-right">ACTION</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {opportunities.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="py-6 text-center text-slate-400">
+                              <FolderKanban className="h-6 w-6 text-slate-300 mx-auto mb-1" />
+                              <span className="font-semibold text-slate-700 text-xs block">
+                                No opportunities created yet
+                              </span>
+                            </td>
+                          </tr>
+                        ) : (
+                          opportunities.slice(0, 6).map((o: any) => (
+                            <tr key={o.id} className="hover:bg-slate-50/70 transition">
+                              <td className="py-2.5">
+                                <span className="font-mono font-bold text-purple-900 text-xs bg-purple-50 px-2 py-0.5 rounded border border-purple-200/80">
+                                  {o.oppNumber}
+                                </span>
+                              </td>
+                              <td className="py-2.5 pr-2">
+                                <div className="font-bold text-slate-900 text-xs">{o.name}</div>
+                                <div className="text-[11px] text-slate-400">{o.account?.name || "Client"}</div>
+                              </td>
+                              <td className="py-2.5">
+                                <span className="rounded bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700 border border-purple-100">
+                                  {o.businessEntity?.shortName || "General"}
+                                </span>
+                              </td>
+                              <td className="py-2.5">
+                                <span
+                                  className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                                    o.status === "Closed Won"
+                                      ? "bg-emerald-100 text-emerald-800"
+                                      : o.status === "GM Approval"
+                                      ? "bg-amber-100 text-amber-800"
+                                      : o.status === "Tender / Estimation"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : "bg-slate-100 text-slate-700"
+                                  }`}
+                                >
+                                  {o.status}
+                                </span>
+                              </td>
+                              <td className="py-2.5 text-right font-mono font-bold text-slate-900 text-xs">
+                                {formatAED(o.expectedValue)}
+                              </td>
+                              <td className="py-2.5 text-right">
+                                <Link
+                                  href={`/opportunities/${o.id}`}
+                                  className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 hover:bg-blue-100 transition"
+                                >
+                                  <span>Open</span>
+                                  <ChevronRight className="h-3 w-3" />
+                                </Link>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  )}
+
+                  {pipelineTableTab === "leads" && (
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-100 text-[10px] font-bold uppercase text-slate-400">
+                          <th className="pb-2">COMPANY / PROSPECT</th>
+                          <th className="pb-2">CONTACT PERSON</th>
+                          <th className="pb-2">DIVISION</th>
+                          <th className="pb-2">STAGE</th>
+                          <th className="pb-2 text-right">EST. VALUE (AED)</th>
+                          <th className="pb-2 text-right">ACTION</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {leads.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="py-6 text-center text-slate-400">
+                              <Users className="h-6 w-6 text-slate-300 mx-auto mb-1" />
+                              <span className="font-semibold text-slate-700 text-xs block">
+                                No leads in pipeline
+                              </span>
+                            </td>
+                          </tr>
+                        ) : (
+                          leads.slice(0, 6).map((l: any) => (
+                            <tr key={l.id} className="hover:bg-slate-50/70 transition">
+                              <td className="py-2.5">
+                                <div className="font-bold text-slate-900 text-xs">{l.company}</div>
+                                <div className="text-[10px] text-slate-400">{l.source}</div>
+                              </td>
+                              <td className="py-2.5 pr-2">
+                                <div className="font-medium text-slate-800 text-xs">{l.name}</div>
+                                <div className="text-[10px] text-slate-400">{l.phone || l.email}</div>
+                              </td>
+                              <td className="py-2.5">
+                                <span className="rounded bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 border border-blue-100">
+                                  {l.businessEntity?.shortName || "General"}
+                                </span>
+                              </td>
+                              <td className="py-2.5">
+                                <span
+                                  className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                                    l.status === "Qualified" || l.status === "Converted" || l.status === "Under Qualification"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : "bg-slate-100 text-slate-700"
+                                  }`}
+                                >
+                                  {l.status}
+                                </span>
+                              </td>
+                              <td className="py-2.5 text-right font-mono font-bold text-slate-900 text-xs">
+                                {formatAED(l.estimatedValue)}
+                              </td>
+                              <td className="py-2.5 text-right">
+                                <Link
+                                  href={`/leads/${l.id}`}
+                                  className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-600 hover:bg-blue-100 transition"
+                                >
+                                  <span>View</span>
+                                  <ChevronRight className="h-3 w-3" />
+                                </Link>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               </div>
             </div>
@@ -562,6 +749,152 @@ export default function UnifiedExecutiveCRM({
                     </Link>
                   ))}
                 </div>
+              </div>
+
+              {/* Card 2: Executive GM Approvals Queue */}
+              <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-xs">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-md bg-blue-50 text-[#0176d3]">
+                      <ShieldAlert className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-900 leading-none">
+                        Executive GM Approvals Queue
+                      </h3>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Commercial offers requiring executive authorization
+                      </p>
+                    </div>
+                  </div>
+                  <Link
+                    href="/approvals"
+                    className="inline-flex items-center gap-0.5 text-xs font-bold text-[#0176d3] hover:underline"
+                  >
+                    <span>View All</span>
+                    <ChevronRight className="h-3 w-3" />
+                  </Link>
+                </div>
+
+                {pendingApprovals && pendingApprovals.length > 0 ? (
+                  <div className="space-y-2">
+                    {pendingApprovals.slice(0, 3).map((q: any) => (
+                      <div
+                        key={q.id}
+                        className="p-2.5 rounded-lg border border-slate-100 bg-slate-50/70 hover:bg-slate-50 transition flex items-center justify-between gap-3 text-xs"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className="font-mono text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">
+                              {q.quotationNumber}
+                            </span>
+                            <span className="font-semibold text-slate-800 text-xs truncate">
+                              {q.tender?.title || "Commercial Tender"}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-slate-400 truncate">
+                            Client: <strong className="text-slate-600">{q.customer?.name}</strong> • {q.businessEntity?.shortName}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2.5 shrink-0">
+                          <span className="font-mono font-bold text-slate-900 text-xs">
+                            {formatAED(q.totalAmount)}
+                          </span>
+                          <Link
+                            href={`/quotations/${q.id}`}
+                            className="px-2.5 py-1 text-[11px] font-bold text-white bg-[#0176d3] hover:bg-[#015ba5] rounded-md transition shadow-2xs"
+                          >
+                            Decide →
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-lg bg-blue-50/50 border border-blue-100 flex items-center gap-3">
+                    <CheckCircle2 className="h-5 w-5 text-[#0176d3] shrink-0" />
+                    <div>
+                      <div className="text-xs font-bold text-slate-900">All Offers Authorized</div>
+                      <div className="text-[11px] text-slate-500">
+                        Zero commercial proposals awaiting GM sign-off.
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Card 3: Active EPC Sites & Milestones */}
+              <div className="rounded-xl border border-slate-200/90 bg-white p-3.5 sm:p-4 shadow-xs">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-md bg-blue-50 text-[#0176d3]">
+                      <FolderKanban className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-900 leading-none">
+                        Active Contracts &amp; Sites
+                      </h3>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Live project mobilization &amp; milestone progress
+                      </p>
+                    </div>
+                  </div>
+                  <Link
+                    href="/projects"
+                    className="inline-flex items-center gap-0.5 text-xs font-bold text-[#0176d3] hover:underline"
+                  >
+                    <span>All Sites</span>
+                    <ChevronRight className="h-3 w-3" />
+                  </Link>
+                </div>
+
+                {recentProjects && recentProjects.length > 0 ? (
+                  <div className="space-y-2">
+                    {recentProjects.slice(0, 3).map((p: any) => (
+                      <div
+                        key={p.id}
+                        className="p-2.5 rounded-lg border border-slate-100 bg-slate-50/70 hover:bg-slate-50 transition flex items-center justify-between gap-3 text-xs"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className="font-mono text-[10px] font-bold text-slate-700 bg-white px-1.5 py-0.2 rounded border border-slate-200">
+                              {p.projectNumber}
+                            </span>
+                            <span className="font-semibold text-slate-800 text-xs truncate">
+                              {p.name}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <div className="w-24 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-[#0176d3] rounded-full transition-all"
+                                style={{ width: `${p.progress || 25}%` }}
+                              />
+                            </div>
+                            <span className="text-[10px] font-mono font-bold text-[#0176d3]">
+                              {p.progress || 25}%
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <div className="font-mono font-bold text-slate-900 text-xs">
+                            {formatAED(p.contractValue || p.approvedBudget)}
+                          </div>
+                          <span className="text-[10px] text-slate-400">
+                            {p.customer?.name || "Client"}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-lg bg-slate-50 border border-slate-100 text-center text-xs text-slate-400">
+                    <p className="font-semibold text-slate-700">No active EPC projects</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Projects appear once contracts are awarded.</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -764,22 +1097,22 @@ export default function UnifiedExecutiveCRM({
                         <span
                           className="rounded px-1.5 py-0.5 text-[9px] font-bold"
                           style={{
-                            backgroundColor: `${o.businessEntity.color}15`,
-                            color: o.businessEntity.color,
+                            backgroundColor: `${o.businessEntity?.color || '#3b82f6'}15`,
+                            color: o.businessEntity?.color || '#3b82f6',
                           }}
                         >
-                          {o.businessEntity.shortName}
+                          {o.businessEntity?.shortName || "General"}
                         </span>
                       </div>
                       <h4 className="font-bold text-slate-900 line-clamp-1 text-xs">{o.name}</h4>
                       <div className="flex items-center justify-between text-slate-500 text-[11px]">
-                        <span>{o.customer.name}</span>
+                        <span>{o.account?.name || o.customer?.name || "Client Account"}</span>
                         <strong className="text-slate-900 font-bold">{formatAED(o.expectedValue)}</strong>
                       </div>
                       <div className="pt-1.5 border-t border-slate-200/60 flex items-center justify-between text-[10px]">
                         <span className="text-purple-700 font-semibold">{o.status}</span>
                         <span className="text-slate-400">
-                          Target: {new Date(o.expectedCloseDate).toLocaleDateString("en-GB")}
+                          Target: {o.expectedCloseDate ? new Date(o.expectedCloseDate).toLocaleDateString("en-GB") : "TBD"}
                         </span>
                       </div>
                     </div>

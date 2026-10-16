@@ -2,11 +2,9 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { ensureLatestDb, pushDbToMongo } from "@/lib/mongoSync";
 
 export async function getContracts(entityCode?: string) {
   try {
-    await ensureLatestDb();
     const where: any = {};
     if (entityCode && entityCode !== "ALL") {
       where.businessEntity = { code: entityCode };
@@ -30,13 +28,13 @@ export async function getContracts(entityCode?: string) {
 
 export async function getContractById(id: string) {
   try {
-    await ensureLatestDb();
     let c = await prisma.contract.findUnique({
       where: { id },
       include: {
         customer: { include: { contacts: true } },
         businessEntity: true,
-        tender: true,
+        tender: { include: { opportunity: true } },
+        opportunity: true,
         quotation: { include: { lineItems: true } },
         projects: {
           include: {
@@ -54,7 +52,8 @@ export async function getContractById(id: string) {
         include: {
           customer: { include: { contacts: true } },
           businessEntity: true,
-          tender: true,
+          tender: { include: { opportunity: true } },
+          opportunity: true,
           quotation: { include: { lineItems: true } },
           projects: {
             include: {
@@ -88,7 +87,6 @@ export async function createProjectFromContract({
   approvedBudget: number;
 }) {
   try {
-    await ensureLatestDb();
     const contract = await prisma.contract.findUnique({
       where: { id: contractId },
       include: { projects: true },
@@ -156,8 +154,59 @@ export async function createProjectFromContract({
     revalidatePath(`/contracts/${contractId}`);
     revalidatePath("/projects");
     revalidatePath("/");
-    await pushDbToMongo();
     return { success: true, project };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateContract(
+  id: string,
+  data: {
+    contractValue?: number;
+    startDate?: string;
+    completionDate?: string;
+    paymentTerms?: string;
+    clientPoNumber?: string;
+    agreedScope?: string;
+    status?: string;
+  }
+) {
+  try {
+    const updateData: any = { ...data };
+    if (data.contractValue !== undefined) updateData.contractValue = Number(data.contractValue);
+    if (data.startDate) updateData.startDate = new Date(data.startDate);
+    if (data.completionDate) updateData.completionDate = new Date(data.completionDate);
+
+    const updated = await prisma.contract.update({
+      where: { id },
+      data: updateData,
+    });
+
+    revalidatePath(`/contracts/${id}`);
+    revalidatePath("/contracts");
+    return { success: true, contract: updated };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function deleteContract(id: string) {
+  try {
+    const contract = await prisma.contract.findUnique({
+      where: { id },
+      include: { projects: true },
+    });
+    if (!contract) throw new Error("Contract not found");
+
+    if (contract.projects.length > 0) {
+      throw new Error("Cannot delete contract linked to active projects. Remove project first.");
+    }
+
+    await prisma.contract.delete({ where: { id } });
+
+    revalidatePath("/contracts");
+    return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

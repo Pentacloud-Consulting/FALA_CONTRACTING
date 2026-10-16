@@ -36,7 +36,7 @@ export default function GenerateQuoteButton({
     <button
       onClick={handleGenerate}
       disabled={loading}
-      className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition shadow-md shadow-blue-600/20"
+      className="inline-flex items-center gap-2 rounded-lg bg-[#0176d3] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#015ba5] disabled:opacity-50 transition shadow-xs cursor-pointer"
     >
       {loading ? (
         <>

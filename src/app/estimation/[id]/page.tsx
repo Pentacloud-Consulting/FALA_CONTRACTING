@@ -32,21 +32,31 @@ export default async function EstimationDetailPage({
   return (
     <div className="space-y-6">
       {/* Header & Breadcrumb */}
-      <div className="flex items-center justify-between">
-        <Link
-          href="/estimation"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          <span>Back to Estimations Register</span>
-        </Link>
-        <span
-          className="rounded px-2.5 py-1 text-xs font-semibold"
-          style={{
-            backgroundColor: `${est.businessEntity.color}15`,
-            color: est.businessEntity.color,
-          }}
-        >
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2.5">
+          <Link
+            href="/estimation"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span>Back to Cost Estimation</span>
+          </Link>
+
+          {est.tender?.opportunity && (
+            <>
+              <span className="text-slate-300">|</span>
+              <Link
+                href={`/opportunities/${est.tender.opportunity.id}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-xs font-bold transition shadow-2xs"
+              >
+                <ChevronLeft className="h-3.5 w-3.5 text-blue-600" />
+                <span>Return to Opportunity ({est.tender.opportunity.oppNumber})</span>
+              </Link>
+            </>
+          )}
+        </div>
+        <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-700 border border-slate-200">
+          <span className="h-2 w-2 rounded-full bg-[#0176d3]" />
           {est.businessEntity.name}
         </span>
       </div>
@@ -56,7 +66,7 @@ export default async function EstimationDetailPage({
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+              <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                 {est.estimationNumber} (v{est.version})
               </span>
               <span className="text-xs text-slate-400">
@@ -94,7 +104,7 @@ export default async function EstimationDetailPage({
             ) : (
               <Link
                 href={`/quotations/${est.quotations[0].id}`}
-                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 transition shadow-sm"
+                className="inline-flex items-center gap-2 rounded-lg bg-[#0176d3] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#015ba5] transition shadow-xs"
               >
                 <FileCheck2 className="h-4 w-4" />
                 <span>View Quotation ({est.quotations[0].quotationNumber}) →</span>

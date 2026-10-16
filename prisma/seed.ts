@@ -232,10 +232,10 @@ async function main() {
 
   const customers: Record<string, any> = {};
   for (const c of customersData) {
-    const existing = await prisma.customer.findUnique({ where: { code: c.code } });
+    const existing = await prisma.account.findUnique({ where: { code: c.code } });
     let record;
     if (existing) {
-      record = await prisma.customer.update({
+      record = await prisma.account.update({
         where: { code: c.code },
         data: {
           name: c.name,
@@ -248,7 +248,7 @@ async function main() {
         },
       });
     } else {
-      record = await prisma.customer.create({
+      record = await prisma.account.create({
         data: {
           code: c.code,
           name: c.name,

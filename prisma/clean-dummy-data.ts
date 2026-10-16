@@ -38,7 +38,7 @@ async function clean() {
   await prisma.opportunity.deleteMany({});
   await prisma.lead.deleteMany({});
   await prisma.contact.deleteMany({});
-  await prisma.customer.deleteMany({});
+  await prisma.account.deleteMany({});
   await prisma.supplier.deleteMany({});
 
   console.log("✅ All dummy transactional & demo data removed cleanly!");

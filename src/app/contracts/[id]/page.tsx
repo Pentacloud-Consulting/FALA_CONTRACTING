@@ -32,14 +32,29 @@ export default async function ContractDetailPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Link
-          href="/contracts"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          <span>Back to Contracts Register</span>
-        </Link>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2.5">
+          <Link
+            href="/contracts"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span>Back to Contracts</span>
+          </Link>
+
+          {(contract.opportunity || contract.tender?.opportunity) && (
+            <>
+              <span className="text-slate-300">|</span>
+              <Link
+                href={`/opportunities/${(contract.opportunity || contract.tender?.opportunity)?.id}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-xs font-bold transition shadow-2xs"
+              >
+                <ChevronLeft className="h-3.5 w-3.5 text-blue-600" />
+                <span>Return to Opportunity ({(contract.opportunity || contract.tender?.opportunity)?.oppNumber})</span>
+              </Link>
+            </>
+          )}
+        </div>
         <span
           className="rounded px-2.5 py-1 text-xs font-semibold"
           style={{

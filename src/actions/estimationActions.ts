@@ -3,11 +3,9 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { calculateEstimation, round2 } from "@/lib/calculations";
-import { ensureLatestDb, pushDbToMongo } from "@/lib/mongoSync";
 
 export async function getEstimations(entityCode?: string) {
   try {
-    await ensureLatestDb();
     const where: any = {};
     if (entityCode && entityCode !== "ALL") {
       where.businessEntity = { code: entityCode };
@@ -31,11 +29,10 @@ export async function getEstimations(entityCode?: string) {
 
 export async function getEstimationById(id: string) {
   try {
-    await ensureLatestDb();
     let est = await prisma.estimation.findUnique({
       where: { id },
       include: {
-        tender: true,
+        tender: { include: { opportunity: true } },
         businessEntity: true,
         customer: true,
         lineItems: true,
@@ -47,7 +44,7 @@ export async function getEstimationById(id: string) {
       est = await prisma.estimation.findFirst({
         where: { estimationNumber: id },
         include: {
-          tender: true,
+          tender: { include: { opportunity: true } },
           businessEntity: true,
           customer: true,
           lineItems: true,
@@ -60,7 +57,7 @@ export async function getEstimationById(id: string) {
       est = await prisma.estimation.findFirst({
         where: { tenderId: id },
         include: {
-          tender: true,
+          tender: { include: { opportunity: true } },
           businessEntity: true,
           customer: true,
           lineItems: true,
@@ -94,7 +91,6 @@ export interface CreateEstimationInput {
 
 export async function createEstimation(input: CreateEstimationInput) {
   try {
-    await ensureLatestDb();
     const tender = await prisma.tender.findUnique({
       where: { id: input.tenderId },
       include: { businessEntity: true, customer: true },
@@ -163,10 +159,99 @@ export async function createEstimation(input: CreateEstimationInput) {
     revalidatePath("/estimation");
     revalidatePath(`/tenders/${tender.id}`);
     revalidatePath("/tenders");
-    await pushDbToMongo();
     return { success: true, estimation: newEstimation };
   } catch (error: any) {
     console.error("Error creating estimation:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateEstimation(
+  id: string,
+  data: {
+    targetMargin?: number;
+    overheads?: number;
+    contingency?: number;
+    notes?: string;
+    preparedBy?: string;
+  }
+) {
+  try {
+    const existing = await prisma.estimation.findUnique({
+      where: { id },
+      include: { lineItems: true, tender: true },
+    });
+    if (!existing) throw new Error("Estimation not found");
+
+    const targetMargin = data.targetMargin !== undefined ? Number(data.targetMargin) : existing.targetMargin;
+    const overheads = data.overheads !== undefined ? Number(data.overheads) : existing.overheads;
+    const contingency = data.contingency !== undefined ? Number(data.contingency) : existing.contingency;
+
+    const calcResult = calculateEstimation({
+      lineItems: existing.lineItems.map((li) => ({
+        costCategory: li.costCategory,
+        description: li.description,
+        quantity: li.quantity,
+        unit: li.unit,
+        unitRate: li.unitRate,
+      })),
+      overheads,
+      contingency,
+      targetMarginPercent: targetMargin,
+      taxRatePercent: existing.taxRate || 5.0,
+    });
+
+    const updated = await prisma.estimation.update({
+      where: { id },
+      data: {
+        targetMargin,
+        overheads: calcResult.overheads,
+        contingency: calcResult.contingency,
+        totalCost: calcResult.totalCost,
+        sellingPriceBeforeTax: calcResult.sellingPriceBeforeTax,
+        taxAmount: calcResult.taxAmount,
+        finalPrice: calcResult.finalPrice,
+        estimatedProfit: calcResult.estimatedProfit,
+        profitMargin: calcResult.profitMarginPercent,
+        notes: data.notes !== undefined ? data.notes : existing.notes,
+        preparedBy: data.preparedBy !== undefined ? data.preparedBy : existing.preparedBy,
+      },
+    });
+
+    revalidatePath("/estimation");
+    revalidatePath(`/estimation/${id}`);
+    return { success: true, estimation: updated };
+  } catch (error: any) {
+    console.error("Error updating estimation:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function deleteEstimation(id: string) {
+  try {
+    const est = await prisma.estimation.findUnique({
+      where: { id },
+      include: { lineItems: true, quotations: true },
+    });
+    if (!est) throw new Error("Estimation not found");
+
+    // Clean up dependent quotations
+    for (const q of est.quotations) {
+      await prisma.approvalRequest.deleteMany({ where: { quotationId: q.id } });
+      await prisma.approvalHistory.deleteMany({ where: { quotationId: q.id } });
+      await prisma.quotationVersion.deleteMany({ where: { quotationId: q.id } });
+      await prisma.quotationLineItem.deleteMany({ where: { quotationId: q.id } });
+      await prisma.quotation.delete({ where: { id: q.id } });
+    }
+
+    await prisma.estimationLineItem.deleteMany({ where: { estimationId: id } });
+    await prisma.estimation.delete({ where: { id } });
+
+    revalidatePath("/estimation");
+    revalidatePath("/tenders");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error deleting estimation:", error);
     return { success: false, error: error.message };
   }
 }

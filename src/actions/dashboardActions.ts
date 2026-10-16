@@ -1,11 +1,9 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { ensureLatestDb } from "@/lib/mongoSync";
 
 export async function getDashboardData(entityFilter?: string) {
   try {
-    await ensureLatestDb();
     const whereEntity =
       entityFilter && entityFilter !== "ALL"
         ? { businessEntity: { code: entityFilter } }
@@ -59,7 +57,7 @@ export async function getDashboardData(entityFilter?: string) {
       }),
       prisma.opportunity.findMany({
         where: whereEntity,
-        include: { customer: true, businessEntity: true },
+        include: { account: true, businessEntity: true },
       }),
       prisma.purchaseRequest.count({
         where: {

@@ -165,7 +165,7 @@ export default function QuotationActions({
           type="button"
           disabled={loading}
           onClick={handleSubmitForGM}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition shadow-md shadow-blue-600/20"
+          className="inline-flex items-center gap-2 rounded-lg bg-[#0176d3] px-4 py-2 text-xs font-bold text-white hover:bg-[#015ba5] disabled:opacity-50 transition shadow-sm"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldAlert className="h-4 w-4" />}
           <span>Submit for Mandatory GM Approval</span>
@@ -180,7 +180,7 @@ export default function QuotationActions({
               <button
                 type="button"
                 onClick={() => setModalMode("GM_APPROVE")}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition shadow-sm"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#0176d3] px-4 py-2 text-xs font-bold text-white hover:bg-[#015ba5] transition shadow-xs"
               >
                 <ShieldCheck className="h-4 w-4" />
                 <span>GM: Approve Offer</span>
@@ -188,7 +188,7 @@ export default function QuotationActions({
               <button
                 type="button"
                 onClick={() => setModalMode("GM_REJECT")}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-rose-700 transition shadow-sm"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200 border border-slate-200 transition"
               >
                 <XCircle className="h-4 w-4" />
                 <span>Reject</span>
@@ -196,15 +196,15 @@ export default function QuotationActions({
               <button
                 type="button"
                 onClick={() => setModalMode("GM_CHANGES")}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3.5 py-2 text-xs font-bold text-amber-900 hover:bg-amber-100 transition shadow-sm"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100 transition shadow-2xs"
               >
                 <RotateCcw className="h-4 w-4" />
                 <span>Request Changes</span>
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-1.5 text-xs text-amber-800">
-              <Lock className="h-4 w-4 text-amber-600" />
+            <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs text-blue-800">
+              <Lock className="h-4 w-4 text-[#0176d3]" />
               <span>
                 Awaiting General Manager Approval. <em>(Switch to GM in header to decide)</em>
               </span>
@@ -218,7 +218,7 @@ export default function QuotationActions({
         <button
           type="button"
           onClick={() => setModalMode("SUBMIT_CLIENT")}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition shadow-sm"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-[#0176d3] px-4 py-2 text-xs font-bold text-white hover:bg-[#015ba5] transition shadow-xs"
         >
           <Send className="h-4 w-4" />
           <span>Mark Submitted to Client</span>
@@ -230,7 +230,7 @@ export default function QuotationActions({
         <button
           type="button"
           onClick={() => setModalMode("RECORD_DECISION")}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-xs font-bold text-white hover:bg-purple-700 transition shadow-sm"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-[#0176d3] px-4 py-2 text-xs font-bold text-white hover:bg-[#015ba5] transition shadow-xs"
         >
           <CheckCircle2 className="h-4 w-4" />
           <span>Record Client Decision</span>
@@ -242,7 +242,7 @@ export default function QuotationActions({
         <button
           type="button"
           onClick={() => setModalMode("CONVERT_CONTRACT")}
-          className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition shadow-md shadow-emerald-600/20"
+          className="inline-flex items-center gap-2 rounded-lg bg-[#0176d3] px-5 py-2 text-xs font-bold text-white hover:bg-[#015ba5] transition shadow-xs"
         >
           <FileSignature className="h-4 w-4" />
           <span>Convert into Awarded Contract →</span>
@@ -253,7 +253,7 @@ export default function QuotationActions({
       {modalMode === "GM_APPROVE" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-2.5 text-emerald-600">
+            <div className="flex items-center gap-2.5 text-[#0176d3]">
               <ShieldCheck className="h-6 w-6" />
               <h3 className="text-base font-bold text-slate-900">
                 General Manager Approval Confirmation
@@ -279,7 +279,7 @@ export default function QuotationActions({
               <button
                 type="button"
                 onClick={() => setModalMode(null)}
-                className="rounded-lg border border-slate-200 px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                className="rounded-lg border border-slate-200 px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
               >
                 Cancel
               </button>
@@ -287,7 +287,7 @@ export default function QuotationActions({
                 type="button"
                 disabled={loading}
                 onClick={() => handleGMDecision("APPROVE")}
-                className="rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-emerald-700"
+                className="rounded-lg bg-[#0176d3] px-4 py-1.5 text-xs font-bold text-white hover:bg-[#015ba5] cursor-pointer shadow-xs"
               >
                 {loading ? "Approving..." : "Confirm GM Approval"}
               </button>
@@ -300,8 +300,8 @@ export default function QuotationActions({
       {modalMode === "GM_REJECT" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-2.5 text-rose-600">
-              <XCircle className="h-6 w-6" />
+            <div className="flex items-center gap-2.5 text-slate-800">
+              <XCircle className="h-6 w-6 text-slate-700" />
               <h3 className="text-base font-bold text-slate-900">
                 General Manager Quotation Rejection
               </h3>
@@ -311,14 +311,14 @@ export default function QuotationActions({
             </p>
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Mandatory Rejection Reason <span className="text-rose-500">*</span>
+                Mandatory Rejection Reason <span className="text-slate-500">*</span>
               </label>
               <textarea
                 rows={3}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="e.g. Unfavourable payment terms, insufficient margin on asphalt wearing course, missing client NOC clause..."
-                className="w-full rounded-lg border border-slate-200 p-2.5 text-xs focus:border-rose-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-200 p-2.5 text-xs focus:border-blue-500 focus:outline-none"
                 required
               />
             </div>
@@ -326,7 +326,7 @@ export default function QuotationActions({
               <button
                 type="button"
                 onClick={() => setModalMode(null)}
-                className="rounded-lg border border-slate-200 px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                className="rounded-lg border border-slate-200 px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
               >
                 Cancel
               </button>
@@ -334,7 +334,7 @@ export default function QuotationActions({
                 type="button"
                 disabled={loading || !reason.trim()}
                 onClick={() => handleGMDecision("REJECT")}
-                className="rounded-lg bg-rose-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-50"
+                className="rounded-lg bg-slate-800 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-900 disabled:opacity-50 cursor-pointer"
               >
                 {loading ? "Rejecting..." : "Confirm Rejection"}
               </button>
@@ -347,7 +347,7 @@ export default function QuotationActions({
       {modalMode === "GM_CHANGES" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-2.5 text-amber-600">
+            <div className="flex items-center gap-2.5 text-[#0176d3]">
               <RotateCcw className="h-6 w-6" />
               <h3 className="text-base font-bold text-slate-900">
                 Request Engineering/Commercial Changes
@@ -358,14 +358,14 @@ export default function QuotationActions({
             </p>
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Required Changes Description <span className="text-amber-500">*</span>
+                Required Changes Description <span className="text-[#0176d3]">*</span>
               </label>
               <textarea
                 rows={3}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="Adjust unit rate on item 2, change advance payment condition to 15% against guarantee."
-                className="w-full rounded-lg border border-slate-200 p-2.5 text-xs focus:border-amber-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-200 p-2.5 text-xs focus:border-blue-500 focus:outline-none"
                 required
               />
             </div>
@@ -373,7 +373,7 @@ export default function QuotationActions({
               <button
                 type="button"
                 onClick={() => setModalMode(null)}
-                className="rounded-lg border border-slate-200 px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                className="rounded-lg border border-slate-200 px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
               >
                 Cancel
               </button>
@@ -381,7 +381,7 @@ export default function QuotationActions({
                 type="button"
                 disabled={loading || !reason.trim()}
                 onClick={() => handleGMDecision("REQUEST_CHANGES")}
-                className="rounded-lg bg-amber-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-50"
+                className="rounded-lg bg-[#0176d3] px-4 py-1.5 text-xs font-bold text-white hover:bg-[#015ba5] disabled:opacity-50 cursor-pointer shadow-xs"
               >
                 {loading ? "Updating..." : "Request Changes"}
               </button>
@@ -394,7 +394,7 @@ export default function QuotationActions({
       {modalMode === "SUBMIT_CLIENT" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-2.5 text-blue-600">
+            <div className="flex items-center gap-2.5 text-[#0176d3]">
               <Send className="h-6 w-6" />
               <h3 className="text-base font-bold text-slate-900">
                 Record Official Client Submission
@@ -418,7 +418,7 @@ export default function QuotationActions({
               <button
                 type="button"
                 onClick={() => setModalMode(null)}
-                className="rounded-lg border border-slate-200 px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                className="rounded-lg border border-slate-200 px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
               >
                 Cancel
               </button>
@@ -426,7 +426,7 @@ export default function QuotationActions({
                 type="button"
                 disabled={loading}
                 onClick={handleSubmitToClient}
-                className="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-blue-700"
+                className="rounded-lg bg-[#0176d3] px-4 py-1.5 text-xs font-bold text-white hover:bg-[#015ba5] cursor-pointer shadow-xs"
               >
                 {loading ? "Recording..." : "Confirm Client Submission"}
               </button>
@@ -439,7 +439,7 @@ export default function QuotationActions({
       {modalMode === "RECORD_DECISION" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-2.5 text-purple-600">
+            <div className="flex items-center gap-2.5 text-[#0176d3]">
               <CheckCircle2 className="h-6 w-6" />
               <h3 className="text-base font-bold text-slate-900">
                 Record Client Commercial Decision
@@ -487,7 +487,7 @@ export default function QuotationActions({
               <button
                 type="button"
                 onClick={() => setModalMode(null)}
-                className="rounded-lg border border-slate-200 px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                className="rounded-lg border border-slate-200 px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
               >
                 Cancel
               </button>
@@ -495,7 +495,7 @@ export default function QuotationActions({
                 type="button"
                 disabled={loading}
                 onClick={handleRecordClientDecision}
-                className="rounded-lg bg-purple-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-purple-700"
+                className="rounded-lg bg-[#0176d3] px-4 py-1.5 text-xs font-bold text-white hover:bg-[#015ba5] cursor-pointer shadow-xs"
               >
                 {loading ? "Saving..." : "Save Client Decision"}
               </button>
@@ -508,7 +508,7 @@ export default function QuotationActions({
       {modalMode === "CONVERT_CONTRACT" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-2.5 text-emerald-600">
+            <div className="flex items-center gap-2.5 text-[#0176d3]">
               <FileSignature className="h-6 w-6" />
               <h3 className="text-base font-bold text-slate-900">
                 Award & Convert into Active Contract
@@ -541,7 +541,7 @@ export default function QuotationActions({
               <button
                 type="button"
                 onClick={() => setModalMode(null)}
-                className="rounded-lg border border-slate-200 px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                className="rounded-lg border border-slate-200 px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
               >
                 Cancel
               </button>
@@ -549,7 +549,7 @@ export default function QuotationActions({
                 type="button"
                 disabled={loading}
                 onClick={handleConvertToContract}
-                className="rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 shadow-md shadow-emerald-600/20"
+                className="rounded-lg bg-[#0176d3] px-4 py-1.5 text-xs font-bold text-white hover:bg-[#015ba5] shadow-xs cursor-pointer"
               >
                 {loading ? "Generating..." : "Award & Generate Contract"}
               </button>

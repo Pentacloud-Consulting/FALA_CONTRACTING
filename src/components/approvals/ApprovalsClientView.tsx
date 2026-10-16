@@ -47,15 +47,15 @@ export default function ApprovalsClientView({
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span>Back to Quotations</span>
+            <span>Back to Quotations &amp; Offers</span>
           </Link>
-          <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
+          <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full">
             Restricted Executive Module
           </span>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-8 sm:p-12 shadow-sm text-center max-w-2xl mx-auto space-y-5">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 shadow-inner">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-[#0176d3] shadow-inner border border-blue-200">
             <Lock className="h-7 w-7" />
           </div>
 
@@ -87,7 +87,7 @@ export default function ApprovalsClientView({
             <button
               type="button"
               onClick={handleSwitchToGM}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-600/20 hover:bg-blue-700 transition"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-[#0176d3] px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-600/20 hover:bg-[#015ba5] transition cursor-pointer"
             >
               <UserCheck className="h-4 w-4" />
               <span>Switch to H.E. Saeed Fala Al-Falasi (GM)</span>
@@ -111,10 +111,10 @@ export default function ApprovalsClientView({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800 uppercase tracking-wide">
+            <span className="rounded bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-700 uppercase tracking-wide border border-blue-200">
               Mandatory Governance Gate
             </span>
-            <span className="rounded bg-emerald-100 text-emerald-800 px-2 py-0.5 text-xs font-bold">
+            <span className="rounded bg-blue-50 text-blue-700 px-2 py-0.5 text-xs font-bold border border-blue-200">
               ✓ Active as GM ({currentUser?.name})
             </span>
           </div>
@@ -130,13 +130,13 @@ export default function ApprovalsClientView({
       {/* Pending Queue */}
       <div className="space-y-4">
         <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-          <ShieldAlert className="h-4 w-4 text-amber-500" />
+          <ShieldAlert className="h-4 w-4 text-[#0176d3]" />
           <span>Pending GM Approval Queue ({pendingQuotations.length})</span>
         </h2>
 
         {pendingQuotations.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center text-xs text-slate-400">
-            <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
+            <CheckCircle2 className="h-8 w-8 text-[#0176d3] mx-auto mb-2" />
             <p className="font-semibold text-slate-700">All caught up!</p>
             <p className="text-slate-400">No quotations currently awaiting GM decision.</p>
           </div>
@@ -145,27 +145,22 @@ export default function ApprovalsClientView({
             {pendingQuotations.map((q) => (
               <div
                 key={q.id}
-                className="rounded-xl border-2 border-amber-300 bg-white p-5 shadow-sm space-y-4 hover:border-amber-400 transition"
+                className="rounded-xl border border-slate-200/90 bg-white p-5 shadow-xs space-y-4 hover:border-blue-400 transition"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <span className="font-mono text-xs font-bold text-slate-800">
+                    <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                       {q.quotationNumber}
                     </span>
-                    <h3 className="text-sm font-bold text-slate-900 mt-0.5">
+                    <h3 className="text-sm font-bold text-slate-900 mt-1">
                       {q.tender.title}
                     </h3>
                     <p className="text-xs text-slate-500 mt-0.5">
                       Employer: <strong className="text-slate-700">{q.customer.name}</strong>
                     </p>
                   </div>
-                  <span
-                    className="rounded px-2 py-0.5 text-[10px] font-bold"
-                    style={{
-                      backgroundColor: `${q.businessEntity.color}15`,
-                      color: q.businessEntity.color,
-                    }}
-                  >
+                  <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-700 border border-slate-200">
+                    <span className="h-2 w-2 rounded-full bg-[#0176d3]" />
                     {q.businessEntity.shortName}
                   </span>
                 </div>
@@ -183,14 +178,14 @@ export default function ApprovalsClientView({
                     <span className="text-[10px] text-slate-400 block uppercase font-medium">
                       Target Margin
                     </span>
-                    <span className="font-bold text-emerald-700 text-sm">
+                    <span className="font-bold text-[#0176d3] text-sm">
                       {q.estimation?.targetMargin ? `${q.estimation.targetMargin}%` : "15.0%"}
                     </span>
                   </div>
                 </div>
 
                 {q.approvalRequests[0]?.comments && (
-                  <p className="text-xs text-slate-600 bg-amber-50/50 p-2.5 rounded border border-amber-200/60 italic">
+                  <p className="text-xs text-slate-700 bg-slate-50 p-2.5 rounded border border-slate-200 italic">
                     "{q.approvalRequests[0].comments}"
                   </p>
                 )}
@@ -201,7 +196,7 @@ export default function ApprovalsClientView({
                   </span>
                   <Link
                     href={`/quotations/${q.id}`}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 transition"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#0176d3] px-4 py-2 text-xs font-bold text-white hover:bg-[#015ba5] transition shadow-xs"
                   >
                     <span>Open & Decide →</span>
                   </Link>
@@ -227,10 +222,10 @@ export default function ApprovalsClientView({
                   <span
                     className={`font-bold px-2 py-0.5 rounded text-[10px] ${
                       h.action === "APPROVED"
-                        ? "bg-emerald-100 text-emerald-800"
+                        ? "bg-blue-100 text-blue-800 border border-blue-200"
                         : h.action === "REJECTED"
-                        ? "bg-rose-100 text-rose-800"
-                        : "bg-blue-100 text-blue-800"
+                        ? "bg-slate-100 text-slate-800 border border-slate-200"
+                        : "bg-blue-50 text-blue-700 border border-blue-200"
                     }`}
                   >
                     {h.action}

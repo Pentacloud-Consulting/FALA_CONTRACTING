@@ -38,25 +38,35 @@ export default async function TenderDetailPage({
   return (
     <div className="space-y-6">
       {/* Back and Breadcrumb */}
-      <div className="flex items-center justify-between">
-        <Link
-          href="/tenders"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          <span>Back to Tenders Register</span>
-        </Link>
-        <div className="flex items-center gap-2">
-          <span
-            className="rounded px-2.5 py-1 text-xs font-semibold"
-            style={{
-              backgroundColor: `${tender.businessEntity.color}15`,
-              color: tender.businessEntity.color,
-            }}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2.5">
+          <Link
+            href="/tenders"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition"
           >
+            <ChevronLeft className="h-4 w-4" />
+            <span>Back to Tender Management</span>
+          </Link>
+
+          {tender.opportunity && (
+            <>
+              <span className="text-slate-300">|</span>
+              <Link
+                href={`/opportunities/${tender.opportunity.id}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-xs font-bold transition shadow-2xs"
+              >
+                <ChevronLeft className="h-3.5 w-3.5 text-blue-600" />
+                <span>Return to Opportunity ({tender.opportunity.oppNumber})</span>
+              </Link>
+            </>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-700 border border-slate-200">
+            <span className="h-2 w-2 rounded-full bg-[#0176d3]" />
             {tender.businessEntity.name}
           </span>
-          <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-bold text-white">
+          <span className="rounded-full bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1 text-xs font-bold">
             {tender.status}
           </span>
         </div>
@@ -67,7 +77,7 @@ export default async function TenderDetailPage({
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+              <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                 {tender.tenderNumber}
               </span>
               <span className="text-xs text-slate-400 font-medium">
@@ -87,7 +97,7 @@ export default async function TenderDetailPage({
             {tender.estimations.length === 0 ? (
               <Link
                 href={`/estimation/new?tenderId=${tender.id}`}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#0176d3] px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#015ba5] transition"
               >
                 <Calculator className="h-4 w-4" />
                 <span>Create Cost Estimation</span>
@@ -95,7 +105,7 @@ export default async function TenderDetailPage({
             ) : (
               <Link
                 href={`/estimation/${tender.estimations[0].id}`}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-purple-700 transition"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#0176d3] px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#015ba5] transition"
               >
                 <Calculator className="h-4 w-4" />
                 <span>View Estimation ({tender.estimations[0].estimationNumber})</span>
@@ -105,7 +115,7 @@ export default async function TenderDetailPage({
             {tender.quotations.length > 0 && (
               <Link
                 href={`/quotations/${tender.quotations[0].id}`}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 transition"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 px-4 py-2 text-xs font-bold transition"
               >
                 <FileCheck2 className="h-4 w-4" />
                 <span>Open Quotation</span>

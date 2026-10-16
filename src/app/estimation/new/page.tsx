@@ -26,7 +26,7 @@ export default async function NewEstimationPage({
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition"
         >
           <ChevronLeft className="h-4 w-4" />
-          <span>Back to Estimations</span>
+          <span>Back to Cost Estimation</span>
         </Link>
         <span className="text-xs text-slate-400">
           Target Margin is calculated as a % of the Selling Price

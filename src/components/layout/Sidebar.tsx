@@ -15,11 +15,7 @@ import {
   FolderKanban,
   ShoppingCart,
   BarChart3,
-  Boxes,
   Landmark,
-  HardHat,
-  Truck,
-  Sliders,
   ChevronRight,
 } from "lucide-react";
 
@@ -43,9 +39,13 @@ export default function Sidebar() {
 
   const navigation: NavGroup[] = [
     {
-      group: "Executive & Pipeline",
+      group: "Executive & CRM Pipeline",
       items: [
-        { name: "Executive Dashboard & CRM", href: "/", icon: LayoutDashboard },
+        { name: "Executive Dashboard", href: "/", icon: LayoutDashboard },
+        { name: "Leads", href: "/leads", icon: Users },
+        { name: "Accounts", href: "/accounts", icon: Landmark },
+        { name: "Contact", href: "/contacts", icon: Users },
+        { name: "Opportunities", href: "/opportunities", icon: FolderKanban },
         { name: "Tender Management", href: "/tenders", icon: FileSpreadsheet },
         { name: "Cost Estimation", href: "/estimation", icon: Calculator },
         { name: "Quotations & Offers", href: "/quotations", icon: FileCheck2 },
@@ -55,8 +55,6 @@ export default function Sidebar() {
                 name: "GM Approvals",
                 href: "/approvals",
                 icon: ShieldAlert,
-                badge: "Mandatory",
-                badgeColor: "bg-amber-500/20 text-amber-400 border border-amber-500/30",
               },
             ]
           : []),
@@ -69,16 +67,6 @@ export default function Sidebar() {
         { name: "Projects & Milestones", href: "/projects", icon: FolderKanban },
         { name: "Procurement (PR/PO/GRN)", href: "/procurement", icon: ShoppingCart },
         { name: "Executive Reports", href: "/reports", icon: BarChart3 },
-      ],
-    },
-    {
-      group: "Simplified Modules (Demo)",
-      items: [
-        { name: "Inventory", href: "/inventory", icon: Boxes },
-        { name: "Finance & Accounts", href: "/finance", icon: Landmark },
-        { name: "HR & Workforce", href: "/hr", icon: HardHat },
-        { name: "Fleet & Workshop", href: "/fleet", icon: Truck },
-        { name: "Administration", href: "/admin", icon: Sliders },
       ],
     },
   ];
@@ -106,7 +94,7 @@ export default function Sidebar() {
                     href={item.href}
                     className={`flex items-center justify-between rounded-lg px-3 py-2 text-xs font-medium transition ${
                       isActive
-                        ? "bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30"
+                        ? "bg-[#0176d3] text-white font-semibold shadow-md shadow-blue-600/30"
                         : "text-slate-300 hover:bg-slate-800 hover:text-white"
                     }`}
                   >
@@ -133,7 +121,7 @@ export default function Sidebar() {
       <div className="p-4 border-t border-slate-800 text-[11px] text-slate-400 bg-slate-950/40">
         <div className="flex items-center justify-between mb-1">
           <span className="font-semibold text-slate-300">Fala Enterprise MVP</span>
-          <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20 font-mono">
+          <span className="text-[10px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20 font-mono">
             SQLite v6.19
           </span>
         </div>
