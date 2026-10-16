@@ -2,13 +2,11 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { ensureLatestDb, pushDbToMongo } from "@/lib/mongoSync";
 
 import { OPPORTUNITY_STAGES, OpportunityStage } from "@/lib/types";
 
 export async function getOpportunities(entityCode?: string, statusFilter?: string) {
   try {
-    await ensureLatestDb();
     const where: any = {};
     if (entityCode && entityCode !== "ALL") {
       where.businessEntity = { code: entityCode };
@@ -63,7 +61,6 @@ export async function createOpportunity(data: {
   specificFieldsJson?: string;
 }) {
   try {
-    await ensureLatestDb();
     if (!data.name?.trim()) {
       return { success: false, error: "Opportunity title / name is required" };
     }
@@ -166,7 +163,6 @@ export async function createOpportunity(data: {
 
     revalidatePath("/opportunities");
     revalidatePath("/dashboard");
-    await pushDbToMongo();
     return { success: true, opportunity: opp };
   } catch (error: any) {
     console.error("Error creating opportunity:", error);
@@ -176,7 +172,6 @@ export async function createOpportunity(data: {
 
 export async function getOpportunityById(id: string) {
   try {
-    await ensureLatestDb();
     let opp = await prisma.opportunity.findUnique({
       where: { id },
       include: {
@@ -285,7 +280,6 @@ export async function updateOpportunityStage(oppId: string, stage: string) {
 
     revalidatePath(`/opportunities/${oppId}`);
     revalidatePath("/opportunities");
-    await pushDbToMongo();
     return { success: true, opportunity: updated };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -486,7 +480,6 @@ export async function deleteOpportunity(oppId: string, force: boolean = false) {
 
     revalidatePath("/opportunities");
     revalidatePath("/leads");
-    await pushDbToMongo();
     return { success: true };
   } catch (error: any) {
     console.error("Error deleting opportunity:", error);

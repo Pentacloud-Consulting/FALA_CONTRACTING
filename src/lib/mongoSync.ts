@@ -19,40 +19,13 @@ export function getDbPath(): string {
   if (isServerless) {
     const tmpPath = path.join("/tmp", "dev.db");
     try {
-      let needsSeed = !fs.existsSync(tmpPath);
-      if (!needsSeed) {
-        try {
-          const stat = fs.statSync(tmpPath);
-          if (stat.size === 0) needsSeed = true;
-        } catch {
-          needsSeed = true;
-        }
-      }
-
-      if (needsSeed) {
-        let copied = false;
+      if (!fs.existsSync(tmpPath) || fs.statSync(tmpPath).size === 0) {
         const bundledPath = path.join(process.cwd(), "prisma", "dev.db");
         if (fs.existsSync(bundledPath)) {
-          try {
-            const bStat = fs.statSync(bundledPath);
-            if (bStat.size > 0) {
-              fs.copyFileSync(bundledPath, tmpPath);
-              copied = true;
-            }
-          } catch (copyErr) {
-            console.warn("copyFileSync failed, falling back to base64:", copyErr);
-          }
-        }
-        if (!copied && DB_BASE64) {
+          fs.copyFileSync(bundledPath, tmpPath);
+        } else if (DB_BASE64) {
           fs.writeFileSync(tmpPath, Buffer.from(DB_BASE64, "base64"));
         }
-      }
-
-      // Explicitly set read-write permissions (0o666) so SQLite never fails with readonly error
-      if (fs.existsSync(tmpPath)) {
-        try {
-          fs.chmodSync(tmpPath, 0o666);
-        } catch {}
       }
     } catch (e) {
       console.warn("Synchronous DB seed warning:", e);
@@ -81,27 +54,15 @@ function getMongoClient(): Promise<MongoClient> {
 export async function ensureLatestDb(): Promise<string> {
   const localPath = getDbPath();
 
-  // 1. Immediate local fallback if missing or empty
-  let needsSeed = !fs.existsSync(localPath);
-  if (!needsSeed) {
-    try {
-      if (fs.statSync(localPath).size === 0) needsSeed = true;
-    } catch {
-      needsSeed = true;
-    }
-  }
-
-  if (needsSeed) {
+  // 1. Immediate local fallback if missing
+  if (!fs.existsSync(localPath) || fs.statSync(localPath).size === 0) {
     let copied = false;
     const bundledPath = path.join(process.cwd(), "prisma", "dev.db");
 
-    if (fs.existsSync(bundledPath)) {
+    if (fs.existsSync(/*turbopackIgnore: true*/ bundledPath)) {
       try {
-        const bStat = fs.statSync(bundledPath);
-        if (bStat.size > 0) {
-          fs.copyFileSync(bundledPath, localPath);
-          copied = true;
-        }
+        fs.copyFileSync(bundledPath, localPath);
+        copied = true;
       } catch {
         copied = false;
       }
@@ -115,12 +76,6 @@ export async function ensureLatestDb(): Promise<string> {
         console.warn("Could not write base64 DB:", err);
       }
     }
-  }
-
-  if (fs.existsSync(localPath)) {
-    try {
-      fs.chmodSync(localPath, 0o666);
-    } catch {}
   }
 
   // 2. Fetch latest version from MongoDB Atlas
@@ -139,9 +94,6 @@ export async function ensureLatestDb(): Promise<string> {
         if (fullDoc && fullDoc.data) {
           const buf = Buffer.from(fullDoc.data.buffer || fullDoc.data);
           fs.writeFileSync(localPath, buf);
-          try {
-            fs.chmodSync(localPath, 0o666);
-          } catch {}
           lastSyncTimestamp = remoteTime;
         }
       }

@@ -2,11 +2,9 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { ensureLatestDb, pushDbToMongo } from "@/lib/mongoSync";
 
 export async function getLeads(entityCode?: string, statusFilter?: string) {
   try {
-    await ensureLatestDb();
     const where: any = {};
     if (entityCode && entityCode !== "ALL") {
       where.businessEntity = { code: entityCode };
@@ -37,7 +35,6 @@ export async function getLeads(entityCode?: string, statusFilter?: string) {
 
 export async function getLeadById(id: string) {
   try {
-    await ensureLatestDb();
     return await prisma.lead.findUnique({
       where: { id },
       include: {
@@ -94,7 +91,6 @@ export async function createLead({
   ownerName?: string;
 }) {
   try {
-    await ensureLatestDb();
     const lead = await prisma.lead.create({
       data: {
         name,
@@ -117,7 +113,6 @@ export async function createLead({
 
     revalidatePath("/leads");
     revalidatePath("/crm");
-    await pushDbToMongo();
     return { success: true, lead };
   } catch (error: any) {
     console.error("Error creating lead:", error);
@@ -127,7 +122,6 @@ export async function createLead({
 
 export async function updateLeadStage(leadId: string, status: string) {
   try {
-    await ensureLatestDb();
     const validStatuses = ["New", "Contacted", "Under Qualification", "Qualified", "Dropped", "Converted"];
     if (!validStatuses.includes(status)) {
       throw new Error(`Invalid lead status: ${status}`);
@@ -148,7 +142,6 @@ export async function updateLeadStage(leadId: string, status: string) {
     revalidatePath(`/leads/${leadId}`);
     revalidatePath("/leads");
     revalidatePath("/crm");
-    await pushDbToMongo();
     return { success: true, lead: updated };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -199,7 +192,6 @@ export async function updateLeadDetails(
 
     revalidatePath(`/leads/${leadId}`);
     revalidatePath("/leads");
-    await pushDbToMongo();
     return { success: true, lead: updated };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -397,7 +389,6 @@ export async function convertLeadAction({
     revalidatePath("/accounts");
     revalidatePath("/contacts");
     revalidatePath("/crm");
-    await pushDbToMongo();
     return { success: true, ...result };
   } catch (error: any) {
     console.error("Error converting lead:", error);
@@ -426,7 +417,6 @@ export async function deleteLead(leadId: string) {
     revalidatePath("/leads");
     revalidatePath("/crm");
     revalidatePath("/opportunities");
-    await pushDbToMongo();
     return { success: true };
   } catch (error: any) {
     console.error("Error deleting lead:", error);

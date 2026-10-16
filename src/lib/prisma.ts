@@ -1,8 +1,8 @@
 import { PrismaClient } from "@prisma/client";
-import { getDbPath } from "./mongoSync";
+import path from "path";
 
-const activeDbPath = getDbPath();
-const activeDbUrl = `file:${activeDbPath}`;
+const localDbPath = path.join(process.cwd(), "prisma", "dev.db");
+const activeDbUrl = `file:${localDbPath}`;
 process.env.DATABASE_URL = activeDbUrl;
 
 const globalForPrisma = globalThis as unknown as {
