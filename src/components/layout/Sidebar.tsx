@@ -17,6 +17,7 @@ import {
   BarChart3,
   Landmark,
   ChevronRight,
+  UserCheck,
 } from "lucide-react";
 
 interface NavItem {
@@ -66,6 +67,7 @@ export default function Sidebar() {
         { name: "Contracts Register", href: "/contracts", icon: FileSignature },
         { name: "Projects & Milestones", href: "/projects", icon: FolderKanban },
         { name: "Procurement (PR/PO/GRN)", href: "/procurement", icon: ShoppingCart },
+        { name: "HR Management", href: "/hr", icon: UserCheck, badge: "Live", badgeColor: "bg-emerald-500/20 text-emerald-300" },
         { name: "Executive Reports", href: "/reports", icon: BarChart3 },
       ],
     },
